@@ -1,30 +1,47 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  DataType,
+  Model,
+  PrimaryKey,
+  Table,
+} from 'sequelize-typescript';
 
-@Entity()
-export class Users {
-  @PrimaryGeneratedColumn()
+@Table({
+  tableName: 'users',
+  timestamps: true,
+})
+export class User extends Model {
+  @PrimaryKey
+  @Column({
+    autoIncrement: true,
+    type: DataType.INTEGER,
+  })
   id: number;
 
-  @Column()
+  @Column({
+    type: DataType.STRING,
+  })
   name: string;
 
-  @Column({ unique: true })
+  @Column({
+    type: DataType.STRING,
+    unique: true,
+  })
   email: string;
 
-  @Column()
+  @Column({
+    type: DataType.STRING,
+  })
   password: string;
 
-  @Column({ default: false })
+  @Column({
+   type: DataType.BOOLEAN
+  })
   isVerified: boolean;
 
-  @Column({ nullable: true })
-  otp: string; // Stores OTP temporarily
-
-  @Column({ type: 'timestamp', nullable: true })
-  otpExpiresAt: Date; // Stores OTP expiration time
-  @CreateDateColumn()
-  createdAt: Date;
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  otp: string;
 }
-

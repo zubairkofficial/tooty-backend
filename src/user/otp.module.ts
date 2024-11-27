@@ -2,11 +2,11 @@
 import { Module } from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { OtpController } from './otp.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Users } from './entities/user.entity';
+import { User } from './entities/user.entity';
+import { SequelizeModule } from '@nestjs/sequelize';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Users])], // Import OTP entity for DB interaction
+  imports: [SequelizeModule.forFeature([User])], // Import OTP entity for DB interaction
   providers: [OtpService],
   controllers: [OtpController],
 })

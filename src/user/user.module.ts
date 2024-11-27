@@ -2,15 +2,15 @@
 import { Module } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { Users } from './entities/user.entity';
+import { User } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { OtpModule } from './otp.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { SequelizeModule } from '@nestjs/sequelize';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Users]),
+    SequelizeModule.forFeature([User]),
     JwtModule.register({
-      secret: 'yourSecretKey', // You should use an environment variable here
+      secret: 'yourSecretKey', 
       signOptions: { expiresIn: '1h' },
     }),
     OtpModule, // Add OTP Module

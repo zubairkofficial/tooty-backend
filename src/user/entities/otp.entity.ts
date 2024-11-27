@@ -1,20 +1,41 @@
-// src/otp/otp.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { truncate } from 'fs/promises';
+import { Column, DataType, Model, PrimaryKey, Table } from 'sequelize-typescript';
 
-@Entity()
-export class Otp {
-  @PrimaryGeneratedColumn()
+@Table({
+  tableName: 'otps',
+  timestamps: truncate
+})
+export class Otp extends Model {
+  @PrimaryKey
+  @Column({
+    autoIncrement: true,
+    type: DataType.INTEGER
+  })
   id: number;
 
-  @Column()
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true, 
+    validate: {
+      isEmail: true 
+    }
+  })
   email: string;
 
-  @Column()
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    validate: {
+      len: [6, 6]
+    }
+  })
   otp: string;
 
-  @Column({ type: 'timestamp' })
-  createdAt: Date;
-  
-  @Column({ default: false })
+  @Column({ 
+    type: DataType.BOOLEAN, 
+    defaultValue: false 
+  })
   isVerified: boolean;
+  
 }
