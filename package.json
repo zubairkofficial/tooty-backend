@@ -2,7 +2,7 @@
   "name": "test-app",
   "version": "0.0.1",
   "description": "",
-  "author": "",
+  "author": "Muqeet Ahmad",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -52,7 +52,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.2",
-    "@types/node": "^20.3.1",
+    "@types/node": "^20.17.9",
     "@types/nodemailer": "^6.4.17",
     "@types/sequelize": "^4.28.20",
     "@types/supertest": "^6.0.0",
