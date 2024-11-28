@@ -4,18 +4,18 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
-import { OtpModule } from './otp.module';
 import { SequelizeModule } from '@nestjs/sequelize';
+import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     SequelizeModule.forFeature([User]),
     JwtModule.register({
-      secret: 'yourSecretKey', 
+      secret: 'yourSecretKey',
       signOptions: { expiresIn: '1h' },
     }),
-    OtpModule, // Add OTP Module
+    ConfigModule
   ],
   controllers: [UserController],
   providers: [UserService],
 })
-export class UserModule {}
+export class UserModule { }

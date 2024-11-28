@@ -3,7 +3,7 @@ import { Column, DataType, Model, PrimaryKey, Table } from 'sequelize-typescript
 
 @Table({
   tableName: 'otps',
-  timestamps: truncate
+  timestamps: true
 })
 export class Otp extends Model {
   @PrimaryKey

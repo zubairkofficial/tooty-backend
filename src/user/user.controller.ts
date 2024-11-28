@@ -2,10 +2,14 @@ import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Controller('auth')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService
+  ) {}
 
   // User Signup
   @Post('signup')
@@ -19,15 +23,16 @@ export class UserController {
     return this.userService.login(createUserDto);
   }
 
-  // Send OTP to user's email
   @Post('send-otp')
-  async sendOtp(@Body('email') email: string) {
-    return this.userService.sendOtp(email);
+  async send(@Body() sendOtpDto: SendOtpDto) {
+
+    const otp = await this.userService.sendOtpToEmail(sendOtpDto);
+    return { message: 'OTP sent successfully' }; // Optional: send OTP in response
   }
 
-  // Verify OTP
   @Post('verify-otp')
-  async verifyOtp(@Body() body: { email: string, otp: string }) {
-    return this.userService.verifyOtp(body.email, body.otp);
+  async verifyOtp(@Body() verifyOptDto: VerifyOtpDto) {
+    
+    return this.userService.verifyOtp(verifyOptDto);
   }
 }
