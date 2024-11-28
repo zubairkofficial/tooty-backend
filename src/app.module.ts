@@ -18,13 +18,13 @@ import dbConfig_DEVELOPMENT from './config/config.development';
     }),
     SequelizeModule.forRoot({
       dialect: "postgres",
-      port: 5432,
-      username: "postgres",
-      password: "12345678",
-      database: "tooty",
+      port: Number(process.env.DB_PORT),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       autoLoadModels: true,
       models: [User, Otp],
-      synchronize: true,
+      synchronize: process.env.DB_SYNCHRONIZE == "true" ? true : false,
       retryDelay: 3000,
     }),
 
