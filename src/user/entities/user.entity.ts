@@ -1,6 +1,7 @@
 import {
   Column,
   DataType,
+  Default,
   Model,
   PrimaryKey,
   Table,
@@ -31,17 +32,18 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
-  })
-  password: string;
 
-  @Column({
-   type: DataType.BOOLEAN
   })
-  isVerified: boolean;
+  contact: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true,
   })
-  otp: string;
+  password: string;
+
+  @Default(false)
+  @Column({
+    type: DataType.BOOLEAN,
+  })
+ isVerified: boolean;
 }

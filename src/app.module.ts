@@ -10,7 +10,7 @@ import { Otp } from './user/entities/otp.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true,      
+      isGlobal: true,
     }),
     SequelizeModule.forRoot({
       dialect: "postgres",
@@ -23,10 +23,10 @@ import { Otp } from './user/entities/otp.entity';
       models: [User, Otp],
       synchronize: process.env.DB_SYNCHRONIZE == "true" ? true : false,
       dialectOptions: {
-        alert: process.env.NODE_ENV == "development" ? true : false,
+        alert: process.env.NODE_ENV == "development" ? false : false,
       },
       sync: {
-        force: process.env.NODE_ENV == "development" ? true : false,
+        force: process.env.NODE_ENV == "development" ? false : false,
       },
       retryDelay: 3000,
 

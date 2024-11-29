@@ -1,8 +1,8 @@
 import { BadRequestException, UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, UserLoginDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
+
 import { SendOtpDto } from './dto/send-otp.dto';
 import * as nodemailer from 'nodemailer';
 import { randomInt } from 'crypto';
@@ -10,11 +10,13 @@ import { Otp } from './entities/otp.entity';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ConfigService } from '@nestjs/config';
 
+import { SignToken } from 'src/utils/signToken.utils';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 
 export class UserService {
   constructor(
-    private readonly jwtService: JwtService,
+
     private configService: ConfigService,
     private readonly logger = new Logger("UserService"),
 
@@ -73,7 +75,10 @@ export class UserService {
         html: `<p>Your OTP is <strong>${otp}</strong></p>`,
       });
 
-      return { message: 'OTP sent successfully', otp };
+      return {
+        message: 'OTP sent successfully',
+        statusCode: HttpStatus.OK
+      };
 
     } catch (error) {
       this.logger.error('Error sending OTP', error);
@@ -86,38 +91,99 @@ export class UserService {
     const otpRecord = await Otp.findOne({
       where: {
         otp: verifyOtp.otp,
-        email: verifyOtp.email
+        email: verifyOtp.email,
+
       }
     });
 
     if (!otpRecord) {
-      throw new Error('Invalid or expired OTP');
+      throw new Error('Invalid and Expired OTP');
     }
+    const user = await User.findOne({
+      where: {
+        email: verifyOtp.email
+      }
+    })
+
+    if (!user) {
+      throw new Error("Unable to Verify User")
+    }
+
     const otpExpiry = new Date(otpRecord.createdAt);
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 5);
     if (new Date() > otpExpiry) {
-      throw new Error('OTP has expired');
+      otpRecord.destroy()
+      throw new Error('Invalid or Expired OTP ');
     }
 
     otpRecord.isVerified = true;
     await otpRecord.save();
 
-    return true;
+    return {
+      message: 'OTP verified successfully',
+      statusCode: HttpStatus.OK,
+      data: {
+        success: true
+      },
+    };
+  }
+
+  async updatePassword(createForgotDto: UpdatePasswordDto) {
+    const { password, otp, email } = createForgotDto;
+
+    const otpRecord = await Otp.findOne({
+      where: {
+        otp,
+        email,
+        isVerified: true
+      }
+    });
+
+    if (!otpRecord) {
+      throw new Error('Unable to Update password');
+    }
+    const user = await User.findOne({
+      where: {
+        email,
+      }
+    })
+
+    if (!user) {
+      throw new Error("Unable to Update password")
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword
+    await user.save()
+
+    await otpRecord.destroy()
+
+    return {
+      message: 'Successfully updated the password',
+      statusCode: HttpStatus.OK,
+    };
   }
 
   async signup(createUserDto: CreateUserDto) {
 
     const existingUser = await User.findOne({ where: { email: createUserDto.email } });
     if (existingUser) {
+      return {
+        message: 'Email Already Exist',
+        statusCode: 1000,
+        user: {
+          isVerified: existingUser.isVerified
+        }
+      }
 
-      throw new BadRequestException('Email already exists');
     }
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const newUser = new User();
     newUser.name = createUserDto.name;
     newUser.email = createUserDto.email;
     newUser.password = hashedPassword;
+    newUser.contact = createUserDto.contact;
     newUser.save();
+    await this.sendOtpToEmail({ email: newUser.email })
     return {
       message: 'You have successfully registered.',
       statusCode: HttpStatus.OK,
@@ -128,21 +194,71 @@ export class UserService {
       },
     };
   }
-  async login(createUserDto: CreateUserDto) {
-    const { email, password } = createUserDto;
 
-    const user = await User.findOne({ where: { email } });
+  async verifyUser(verifyOtp: VerifyOtpDto) {
+    const otpRecord = await Otp.findOne({
+      where: {
+        otp: verifyOtp.otp,
+        email: verifyOtp.email,
+
+      }
+    });
+
+    if (!otpRecord) {
+      throw new Error('Invalid and Expired OTP');
+    }
+    const user = await User.findOne({
+      where: {
+        email: verifyOtp.email
+      }
+    })
+
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new Error("Unable to Verify User")
     }
 
+    const otpExpiry = new Date(otpRecord.createdAt);
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 5);
+    if (new Date() > otpExpiry) {
+      otpRecord.destroy()
+      throw new Error('Invalid or Expired OTP ');
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    await otpRecord.destroy()
+
+
+    return {
+      message: 'OTP verified successfully',
+      statusCode: HttpStatus.OK,
+      data: {
+        success: true
+      },
+    };
+  }
+  async login(userLoginDto: UserLoginDto) {
+    const { email, password } = userLoginDto;
+    this.logger.log(`USER login creadentaila , ${userLoginDto}`)
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      throw new UnauthorizedException('No User exist');
+    }
+    this.logger.log(`USER in db , ${user}`)
+
+    this.logger.log(`USER in db , ${user.password} \n ${password}`)
     // Validate password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { sub: user.id, email: user.email };
-    const token = this.jwtService.sign(payload);
+
+    const token = SignToken(payload)
+
+    this.logger.log(`jwt token ${token}`)
     return {
       message: 'Login successful.',
       statusCode: 200,

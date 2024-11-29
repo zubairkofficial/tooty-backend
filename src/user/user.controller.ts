@@ -1,15 +1,15 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { CreateUserDto, UserLoginDto } from './dto/create-user.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Controller('auth')
 export class UserController {
   constructor(
     private readonly userService: UserService
-  ) {}
+  ) { }
 
   // User Signup
   @Post('signup')
@@ -19,20 +19,31 @@ export class UserController {
 
   // User Login
   @Post('login')
-  async login(@Body() createUserDto: CreateUserDto) {
-    return this.userService.login(createUserDto);
+  async login(@Body() userLoginDto: UserLoginDto) {
+    return this.userService.login(userLoginDto);
   }
 
   @Post('send-otp')
   async send(@Body() sendOtpDto: SendOtpDto) {
 
-    const otp = await this.userService.sendOtpToEmail(sendOtpDto);
-    return { message: 'OTP sent successfully' }; // Optional: send OTP in response
+    return await this.userService.sendOtpToEmail(sendOtpDto);
+
+  }
+
+  @Post('update-password')
+  async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto) {
+    return await this.userService.updatePassword(updatePasswordDto);
+  }
+
+  @Post('verify-user')
+  async verifyUser(@Body() verifyOptDto: VerifyOtpDto) {
+
+    return this.userService.verifyUser(verifyOptDto);
   }
 
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOptDto: VerifyOtpDto) {
-    
+
     return this.userService.verifyOtp(verifyOptDto);
   }
 }
