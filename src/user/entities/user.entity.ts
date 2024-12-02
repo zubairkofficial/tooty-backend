@@ -2,10 +2,12 @@ import {
   Column,
   DataType,
   Default,
+  HasOne,
   Model,
   PrimaryKey,
   Table,
 } from 'sequelize-typescript';
+import { RefreshToken } from './refreshToken.entity';
 
 @Table({
   tableName: 'users',
@@ -32,7 +34,6 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
-
   })
   contact: string;
 
@@ -45,5 +46,8 @@ export class User extends Model {
   @Column({
     type: DataType.BOOLEAN,
   })
- isVerified: boolean;
+  isVerified: boolean;
+
+  @HasOne(() => RefreshToken)
+  refresh_token!: RefreshToken;
 }

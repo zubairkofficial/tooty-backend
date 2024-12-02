@@ -1,5 +1,10 @@
-import { BadRequestException, UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
-import { CreateUserDto, UserLoginDto } from './dto/create-user.dto';
+import { UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  CreateUserDto,
+  RefreshAccessToken,
+  UserLoginDto,
+  UserLogoutDto,
+} from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
@@ -8,23 +13,14 @@ import * as nodemailer from 'nodemailer';
 import { randomInt } from 'crypto';
 import { Otp } from './entities/otp.entity';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { ConfigService } from '@nestjs/config';
 
-import { SignToken } from 'src/utils/signToken.utils';
+import { SignAccessToken, SignRefreshToken } from 'src/utils/signToken.utils';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-
+import { RefreshToken } from './entities/refreshToken.entity';
+import { VerifyRefreshToken } from 'src/utils/verifyToken.utils';
 
 export class UserService {
-  constructor(
-
-    private configService: ConfigService,
-    private readonly logger = new Logger("UserService"),
-
-
-  ) {
-
-
-  }
+  constructor(private readonly logger = new Logger('UserService')) { }
 
   private generateOtp(): string {
     const otp = randomInt(100000, 999999).toString(); // Generate a 6-digit OTP
@@ -36,7 +32,9 @@ export class UserService {
 
     try {
       // Check if an OTP already exists for the email
-      const existingOtp = await Otp.findOne({ where: { email: sendOtpDto.email } });
+      const existingOtp = await Otp.findOne({
+        where: { email: sendOtpDto.email },
+      });
 
       if (existingOtp) {
         // Update the existing record
@@ -53,10 +51,11 @@ export class UserService {
         await otpRecord.save();
       }
 
-      this.logger.log(`The OTP is ${otp}, ${sendOtpDto.email}, ${process.env.EMAIL_HOST} `);
+      this.logger.log(
+        `The OTP is ${otp}, ${sendOtpDto.email}, ${process.env.EMAIL_HOST} `,
+      );
 
       const transporter = nodemailer.createTransport({
-
         host: `${process.env.EMAIL_HOST}`,
         port: Number(`${process.env.EMAIL_PORT}`),
         secure: false,
@@ -77,23 +76,20 @@ export class UserService {
 
       return {
         message: 'OTP sent successfully',
-        statusCode: HttpStatus.OK
+        statusCode: HttpStatus.OK,
       };
-
     } catch (error) {
       this.logger.error('Error sending OTP', error);
       throw new Error('Failed to send OTP');
     }
   }
 
-
   async verifyOtp(verifyOtp: VerifyOtpDto) {
     const otpRecord = await Otp.findOne({
       where: {
         otp: verifyOtp.otp,
         email: verifyOtp.email,
-
-      }
+      },
     });
 
     if (!otpRecord) {
@@ -101,18 +97,18 @@ export class UserService {
     }
     const user = await User.findOne({
       where: {
-        email: verifyOtp.email
-      }
-    })
+        email: verifyOtp.email,
+      },
+    });
 
     if (!user) {
-      throw new Error("Unable to Verify User")
+      throw new Error('Unable to Verify User');
     }
 
     const otpExpiry = new Date(otpRecord.createdAt);
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 5);
     if (new Date() > otpExpiry) {
-      otpRecord.destroy()
+      otpRecord.destroy();
       throw new Error('Invalid or Expired OTP ');
     }
 
@@ -123,7 +119,7 @@ export class UserService {
       message: 'OTP verified successfully',
       statusCode: HttpStatus.OK,
       data: {
-        success: true
+        success: true,
       },
     };
   }
@@ -135,8 +131,8 @@ export class UserService {
       where: {
         otp,
         email,
-        isVerified: true
-      }
+        isVerified: true,
+      },
     });
 
     if (!otpRecord) {
@@ -145,17 +141,17 @@ export class UserService {
     const user = await User.findOne({
       where: {
         email,
-      }
-    })
+      },
+    });
 
     if (!user) {
-      throw new Error("Unable to Update password")
+      throw new Error('Unable to Update password');
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword
-    await user.save()
+    user.password = hashedPassword;
+    await user.save();
 
-    await otpRecord.destroy()
+    await otpRecord.destroy();
 
     return {
       message: 'Successfully updated the password',
@@ -164,17 +160,17 @@ export class UserService {
   }
 
   async signup(createUserDto: CreateUserDto) {
-
-    const existingUser = await User.findOne({ where: { email: createUserDto.email } });
+    const existingUser = await User.findOne({
+      where: { email: createUserDto.email },
+    });
     if (existingUser) {
       return {
         message: 'Email Already Exist',
         statusCode: 1000,
         user: {
-          isVerified: existingUser.isVerified
-        }
-      }
-
+          isVerified: existingUser.isVerified,
+        },
+      };
     }
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const newUser = new User();
@@ -183,7 +179,7 @@ export class UserService {
     newUser.password = hashedPassword;
     newUser.contact = createUserDto.contact;
     newUser.save();
-    await this.sendOtpToEmail({ email: newUser.email })
+    await this.sendOtpToEmail({ email: newUser.email });
     return {
       message: 'You have successfully registered.',
       statusCode: HttpStatus.OK,
@@ -200,8 +196,7 @@ export class UserService {
       where: {
         otp: verifyOtp.otp,
         email: verifyOtp.email,
-
-      }
+      },
     });
 
     if (!otpRecord) {
@@ -209,46 +204,110 @@ export class UserService {
     }
     const user = await User.findOne({
       where: {
-        email: verifyOtp.email
-      }
-    })
+        email: verifyOtp.email,
+      },
+    });
 
     if (!user) {
-      throw new Error("Unable to Verify User")
+      throw new Error('Unable to Verify User');
     }
 
     const otpExpiry = new Date(otpRecord.createdAt);
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 5);
     if (new Date() > otpExpiry) {
-      otpRecord.destroy()
+      otpRecord.destroy();
       throw new Error('Invalid or Expired OTP ');
     }
 
     user.isVerified = true;
     await user.save();
 
-    await otpRecord.destroy()
-
+    await otpRecord.destroy();
 
     return {
       message: 'OTP verified successfully',
       statusCode: HttpStatus.OK,
       data: {
-        success: true
+        success: true,
       },
     };
   }
+
+  async generateRefreshToken(payload: {
+    sub: number;
+    email: string;
+  }): Promise<string> {
+    const refreshToken = SignRefreshToken(payload);
+    try {
+      await RefreshToken.create({
+        user_id: payload.sub,
+        refresh_token: refreshToken
+      })
+      return refreshToken;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  async refreshAccessToken(refreshAccessToken: RefreshAccessToken) {
+    const { refresh_token } = refreshAccessToken;
+
+    const token_exist = await RefreshToken.findOne({
+      where: {
+        refresh_token,
+      },
+    });
+
+    if (!token_exist) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
+    const verifyToken: any = await VerifyRefreshToken(refresh_token);
+    
+    if (verifyToken.email == '') {
+      throw new Error('Token expired or invalid');
+    }
+
+    const accessToken = SignAccessToken({
+      sub: verifyToken.sub,
+      email: verifyToken.email,
+    });
+
+    return {
+      accessToken: accessToken,
+      statuCode: 200,
+    };
+  }
+
+  async logout(userLogoutDto: UserLogoutDto) {
+    const { refresh_token } = userLogoutDto;
+
+    try {
+      await RefreshToken.destroy({
+        where: {
+          refresh_token,
+        },
+      });
+      return {
+        message: 'LogOut successful.',
+        statusCode: 200,
+      };
+    } catch (error) {
+      throw new Error('Failed To LogOut');
+    }
+  }
+
   async login(userLoginDto: UserLoginDto) {
     const { email, password } = userLoginDto;
-    this.logger.log(`USER login creadentaila , ${userLoginDto}`)
+    this.logger.log(`USER login creadentaila , ${userLoginDto}`);
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
       throw new UnauthorizedException('No User exist');
     }
-    this.logger.log(`USER in db , ${user}`)
+    this.logger.log(`USER in db , ${user}`);
 
-    this.logger.log(`USER in db , ${user.password} \n ${password}`)
+    this.logger.log(`USER in db , ${user.password} \n ${password}`);
     // Validate password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -256,20 +315,28 @@ export class UserService {
     }
     const payload = { sub: user.id, email: user.email };
 
-    const token = SignToken(payload)
+    const refreshToken = await this.generateRefreshToken(payload);
 
-    this.logger.log(`jwt token ${token}`)
+    if (refreshToken == '') {
+      throw new Error('Fialed to LogIn');
+    }
+    const accessToken = SignAccessToken(payload);
+
+    this.logger.log(
+      `jwt access token ${accessToken} \n jwt refresh token ${refreshToken}`,
+    );
     return {
       message: 'Login successful.',
       statusCode: 200,
       data: {
-        accessToken: token,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
         },
       },
-    }
+    };
   }
 }

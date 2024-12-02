@@ -1,15 +1,18 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto, UserLoginDto } from './dto/create-user.dto';
+import {
+  CreateUserDto,
+  RefreshAccessToken,
+  UserLoginDto,
+  UserLogoutDto,
+} from './dto/create-user.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Controller('auth')
 export class UserController {
-  constructor(
-    private readonly userService: UserService
-  ) { }
+  constructor(private readonly userService: UserService) {}
 
   // User Signup
   @Post('signup')
@@ -22,12 +25,19 @@ export class UserController {
   async login(@Body() userLoginDto: UserLoginDto) {
     return this.userService.login(userLoginDto);
   }
+  @Post('logout')
+  async logout(@Body() userLogoutDto: UserLogoutDto) {
+    return this.userService.logout(userLogoutDto);
+  }
+
+  @Post('refresh-access-token')
+  async refreshAccessToken(@Body() refreshAccessToken: RefreshAccessToken) {
+    return this.userService.refreshAccessToken(refreshAccessToken);
+  }
 
   @Post('send-otp')
   async send(@Body() sendOtpDto: SendOtpDto) {
-
     return await this.userService.sendOtpToEmail(sendOtpDto);
-
   }
 
   @Post('update-password')
@@ -37,13 +47,11 @@ export class UserController {
 
   @Post('verify-user')
   async verifyUser(@Body() verifyOptDto: VerifyOtpDto) {
-
     return this.userService.verifyUser(verifyOptDto);
   }
 
   @Post('verify-otp')
   async verifyOtp(@Body() verifyOptDto: VerifyOtpDto) {
-
     return this.userService.verifyOtp(verifyOptDto);
   }
 }

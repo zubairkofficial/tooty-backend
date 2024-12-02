@@ -6,6 +6,7 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
 import { User } from './user/entities/user.entity';
 import { Otp } from './user/entities/otp.entity';
+import { RefreshToken } from './user/entities/refreshToken.entity';
 
 @Module({
   imports: [
@@ -13,27 +14,27 @@ import { Otp } from './user/entities/otp.entity';
       isGlobal: true,
     }),
     SequelizeModule.forRoot({
-      dialect: "postgres",
+      dialect: 'postgres',
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadModels: true,
-      models: [User, Otp],
-      synchronize: process.env.DB_SYNCHRONIZE == "true" ? true : false,
+      models: [User, Otp, RefreshToken],
+      synchronize: process.env.DB_SYNCHRONIZE == 'true' ? true : false,
       dialectOptions: {
-        alert: process.env.NODE_ENV == "development" ? false : false,
+        alert: process.env.NODE_ENV == 'development' ? false : false,
       },
       sync: {
-        force: process.env.NODE_ENV == "development" ? false : false,
+        force: process.env.NODE_ENV == 'development' ? false : false,
       },
       retryDelay: 3000,
-
     }),
 
-    UserModule],
+    UserModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
