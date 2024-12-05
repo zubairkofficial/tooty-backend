@@ -6,11 +6,14 @@ import { Join_BotContextData } from "./entities/join_botContextData.entity";
 import { ContextData } from "src/context_data/entities/contextData.entity";
 import { OpenAIEmbeddings, OpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { Request } from "express";
+import sequelize from "sequelize";
+import { Sequelize } from "sequelize-typescript";
 
 
 export class BotService {
 
-    constructor(private readonly logger = new Logger('BotService')) { }
+    constructor(private readonly logger = new Logger('BotService'), private readonly sequelize: Sequelize,) { }
 
 
 
@@ -101,12 +104,21 @@ export class BotService {
         const magnitudeVec2 = Math.sqrt(vec2.reduce((sum, value) => sum + value * value, 0));
         return dotProduct / (magnitudeVec1 * magnitudeVec2);
     }
-    async createBot(createBotDto: CreateBotDto) {
+    async createBot(createBotDto: CreateBotDto, req: any) {
+        console.log(createBotDto)
+
         try {
+
             await Bot.create({
                 name: createBotDto.name,
                 description: createBotDto.description,
-                ai_model: createBotDto.ai_model
+                ai_model: createBotDto.ai_model,
+                user_id: req.user.sub
+            }).then(async (bot) => {
+                await Join_BotContextData.create({
+                    bot_id: bot.id,
+                    file_id: createBotDto.file_id
+                })
             })
 
             return {

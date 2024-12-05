@@ -13,13 +13,15 @@ export class JwtAuthGuard implements CanActivate {
         const token = request.headers.token
 
         if (!token) {
+        
             return false;
         }
 
 
         try {
             const user = VerifyAccessToken(token);
-            request.body.user = user; // Attach the user to the request
+            request.user = user; // Attach the user to the request
+            console.log(request.user)
             return true;
         } catch (error) {
             return false;

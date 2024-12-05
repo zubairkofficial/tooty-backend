@@ -160,6 +160,7 @@ export class UserService {
   }
 
   async signup(createUserDto: CreateUserDto) {
+    console.log(createUserDto)
     const existingUser = await User.findOne({
       where: { email: createUserDto.email },
     });

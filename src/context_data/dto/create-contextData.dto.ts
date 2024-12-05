@@ -1,11 +1,19 @@
-import { Type } from "class-transformer";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class CreateFileDto {
     @IsString()
+    @IsNotEmpty()
     file_name: string;
 
     @IsString()
+    @IsNotEmpty()
     slug: string
+
+}
+
+
+export class DeleteFileDto {
+    @IsNumber()
+    id: string;
 
 }

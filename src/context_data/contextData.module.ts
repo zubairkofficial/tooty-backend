@@ -4,12 +4,12 @@ import { ContextDataService } from './contextData.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ContextData } from './entities/contextData.entity';
 import { ConfigModule } from '@nestjs/config';
-import { MulterModule } from '@nestjs/platform-express';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [
     SequelizeModule.forFeature([ContextData]), ConfigModule],
   controllers: [ContextDataController],
-  providers: [ContextDataService]
+  providers: [ContextDataService, JwtService]
 })
 export class ContextDataModule { }

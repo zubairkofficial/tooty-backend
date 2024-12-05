@@ -1,4 +1,7 @@
 import {
+    BeforeCreate,
+    BeforeUpdate,
+    BelongsTo,
     BelongsToMany,
     Column,
     DataType,
@@ -13,10 +16,13 @@ import {
 import { Bot } from '../../bot/entities/bot.entity';
 import { Join_BotContextData } from '../../bot/entities/join_botContextData.entity';
 import { ContextData } from './contextData.entity';
+import { User } from 'src/user/entities/user.entity';
+// import slugify from 'slugify';
 
 @Table({
     tableName: 'file',
     timestamps: true,
+    paranoid: true
 })
 export class File extends Model {
     @PrimaryKey
@@ -26,6 +32,11 @@ export class File extends Model {
     })
     id: number;
 
+    @ForeignKey(() => User)
+    @Column({
+        type: DataType.INTEGER,
+    })
+    user_id: number;
 
     @Column({
         type: DataType.STRING,
@@ -38,8 +49,18 @@ export class File extends Model {
     })
     slug: string;
 
+
+    // @BeforeCreate
+    // @BeforeUpdate
+    // static generateSlug(file: File) {
+    //     file.slug = slugify(file.file_name, { lower: true, trim: true, strict: true });
+    // }
+
     @HasMany(() => ContextData)
     chunks: ContextData[]
+
+    @BelongsTo(() => User)
+    user!: User;
 
     @BelongsToMany(() => Bot, () => Join_BotContextData)
     bots!: Bot[];

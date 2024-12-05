@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -14,6 +14,7 @@ import { ContextData } from './context_data/entities/contextData.entity';
 import { Join_BotContextData } from './bot/entities/join_botContextData.entity';
 import { ApiModule } from './api/api.module';
 import { File } from './context_data/entities/file.entity';
+import { JwtMiddleware } from './middlewares/jwtVerify.middleware';
 
 @Module({
   imports: [
@@ -30,11 +31,10 @@ import { File } from './context_data/entities/file.entity';
       autoLoadModels: true,
       models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File],
       synchronize: process.env.DB_SYNCHRONIZE == 'true' ? true : false,
-      dialectOptions: {
-        alert: process.env.NODE_ENV == 'development' ? false : false,
-      },
+
       sync: {
         force: process.env.NODE_ENV == 'development' ? false : false,
+        alter: process.env.NODE_ENV == 'development' ? false : false,
       },
       retryDelay: 3000,
     }),
@@ -60,10 +60,9 @@ export class AppModule { }
 // implements NestModule {
 //   configure(consumer: MiddlewareConsumer) {
 //     consumer
-//       .apply(JwtVerifyMiddleware)  // Apply JWT verification middleware
+//       .apply(JwtMiddleware)  // Apply JWT verification middleware
 //       .forRoutes(
-//         { path: 'api', method: RequestMethod.ALL },
-//         'user/logout', 'user/refresh-access-token',
+//         'user/logout', 'user/refresh-access-token', 'bot/create-bot', 'bot/delete-bot', 'bot/query-bot', 'bot/join-bot-context', 'context-data/upload', 'context-data/delete'
 
 //       ); // Apply to specific routes or controllers, like 'profile' or '/profile/*'
 //   }

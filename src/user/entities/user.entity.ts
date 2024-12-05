@@ -10,10 +10,12 @@ import {
 } from 'sequelize-typescript';
 import { RefreshToken } from './refreshToken.entity';
 import { Bot } from 'src/bot/entities/bot.entity';
+import { File } from 'src/context_data/entities/file.entity';
 
 @Table({
   tableName: 'users',
   timestamps: true,
+  paranoid: true
 })
 export class User extends Model {
   @PrimaryKey
@@ -59,5 +61,8 @@ export class User extends Model {
   refresh_token!: RefreshToken;
 
   @HasMany(() => Bot)
-  bots!: Bot
+  bots!: Bot[]
+
+  @HasMany(() => File)
+  files!: File[]
 }

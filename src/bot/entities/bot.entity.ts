@@ -15,6 +15,7 @@ import { File } from 'src/context_data/entities/file.entity';
 @Table({
     tableName: 'bots',
     timestamps: true,
+    paranoid: true
 })
 export class Bot extends Model {
     @PrimaryKey
@@ -45,7 +46,9 @@ export class Bot extends Model {
     })
     user_id: number;
 
-    @BelongsTo(() => User)
+    @BelongsTo(() => User, {
+        onDelete: "CASCADE",
+    })
     user!: User
 
     @BelongsToMany(() => File, () => Join_BotContextData)

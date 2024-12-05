@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import {
   CreateUserDto,
@@ -9,10 +9,11 @@ import {
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 
 @Controller('auth')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   // User Signup
   @Post('signup')
@@ -26,11 +27,13 @@ export class UserController {
     return this.userService.login(userLoginDto);
   }
   @Post('logout')
+  @UseGuards(JwtAuthGuard)
   async logout(@Body() userLogoutDto: UserLogoutDto) {
     return this.userService.logout(userLogoutDto);
   }
 
   @Post('refresh-access-token')
+  @UseGuards(JwtAuthGuard)
   async refreshAccessToken(@Body() refreshAccessToken: RefreshAccessToken) {
     return this.userService.refreshAccessToken(refreshAccessToken);
   }
@@ -41,6 +44,7 @@ export class UserController {
   }
 
   @Post('update-password')
+  @UseGuards(JwtAuthGuard)
   async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto) {
     return await this.userService.updatePassword(updatePasswordDto);
   }

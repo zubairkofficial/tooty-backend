@@ -6,9 +6,10 @@ import { User } from './entities/user.entity';
 
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 @Module({
   imports: [SequelizeModule.forFeature([User]), ConfigModule],
   controllers: [UserController],
-  providers: [UserService],
+  providers: [UserService,JwtService],
 })
 export class UserModule {}

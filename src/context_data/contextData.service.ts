@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
 import * as pdf from 'pdf-parse';
-// import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { CreateFileDto } from './dto/create-contextData.dto';
+import { CreateFileDto, DeleteFileDto } from './dto/create-contextData.dto';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { ContextData } from './entities/contextData.entity';
 import { File } from './entities/file.entity';
+import { Op } from 'sequelize';
+import { Request } from 'express';
 
 interface Chunk {
     id: number;
@@ -15,8 +15,63 @@ interface Chunk {
 export class ContextDataService {
     constructor(
         private readonly logger = new Logger()) { }
-    async processFile(file: Express.Multer.File, createFileDto: CreateFileDto) {
 
+    async getAllFilesByUser(req: any) {
+        console.log(req.user.sub)
+        try {
+
+            const files = await File.findAll({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
+
+            return {
+                statusCode: 200,
+                files: files,
+                message: "success getting files"
+            }
+        } catch (error) {
+            throw new Error('error fetching file')
+        }
+    }
+    async deleteFile(deleteFileDto: DeleteFileDto, req: Request) {
+        try {
+            await File.destroy({
+                where: {
+                    id: {
+                        [Op.eq]: deleteFileDto.id
+                    }
+                }
+            }).then(() => {
+                ContextData.destroy({
+                    where: {
+                        file_id: {
+                            [Op.eq]: deleteFileDto.id
+                        }
+                    }
+                })
+            }).then(result => {
+                console.log("sucees",);
+            })
+                .catch(err => {
+                    console.error("Error deeleting context data:", err);
+                });
+            return {
+                statusCode: 200,
+                message: "Success Deleting File"
+            }
+
+        } catch (error) {
+            throw new Error('Failed Deleting File')
+        }
+    }
+
+    async processFile(file: Express.Multer.File, createFileDto: CreateFileDto, req: any) {
+
+        console.log("req user", req.user)
         console.log('File received:', file.originalname, createFileDto.file_name);
 
         if (!file.originalname.endsWith('.pdf')) {
@@ -25,7 +80,8 @@ export class ContextDataService {
 
         const context_file = await File.create({
             file_name: createFileDto.file_name,
-            slug: createFileDto.slug
+            slug: createFileDto.slug,
+            user_id: req.user.sub
         })
 
         const parentDoc = await pdf(file.buffer)
@@ -42,21 +98,30 @@ export class ContextDataService {
         });
 
         try {
-            subDocs.forEach(async ({ data }) => {
-                let embedded_data = await embeddings.embedQuery(data);
-                console.log("ehis is embeded data", embedded_data)
-                const result = await ContextData.create({
-                    text_chunk: data,
-                    embedded_chunk: `{${embedded_data}}`,
-                    file_id: context_file.id
-                })
-                console.log("result", result)
-            })
+            const promises = subDocs.map(({ data }) => {
+                return embeddings.embedQuery(data)
+                    .then(embedded_data => {
+                        console.log("This is embedded data", embedded_data);
+                        return ContextData.create({
+                            text_chunk: data,
+                            embedded_chunk: `{${embedded_data}}`,
+                            file_id: context_file.id,
+                        });
+                    })
+                    .then(result => {
+                        console.log("Result:", result);
+                    })
+                    .catch(err => {
+                        console.error("Error creating context data:", err);
+                    });
+            });
+            // Wait for all promises to complete
+            await Promise.all(promises);
 
             return {
                 statusCode: 200,
-                message: "Successs creating context data"
-            }
+                message: "Success creating context data"
+            };
         } catch (error) {
             console.error('Error generating embedding:', error);
             throw new Error('error creating context data')

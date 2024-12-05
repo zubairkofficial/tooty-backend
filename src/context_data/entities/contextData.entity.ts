@@ -1,6 +1,5 @@
 import {
-  AllowNull,
-  BelongsTo,
+ BelongsTo,
   Column,
   DataType,
   ForeignKey,
@@ -19,6 +18,7 @@ type Vector = number[];
 @Table({
   tableName: 'context_data',
   timestamps: true,
+
 })
 export class ContextData extends Model {
   @PrimaryKey
@@ -52,8 +52,7 @@ export class ContextData extends Model {
 
   @ForeignKey(() => File)
   @Column({
-    type: DataType.INTEGER,
-    onDelete: "CASCADE",
+    type: DataType.INTEGER
   })
   file_id: number
 

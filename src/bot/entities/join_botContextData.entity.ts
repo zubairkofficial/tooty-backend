@@ -10,9 +10,9 @@ import { Bot } from './bot.entity';
 import { File } from 'src/context_data/entities/file.entity';
 
 @Table({
-    tableName: 'context_data',
+    tableName: 'Join_Bots_Files',
     timestamps: true,
-
+    paranoid: true
 })
 export class Join_BotContextData extends Model {
     @PrimaryKey
@@ -26,14 +26,14 @@ export class Join_BotContextData extends Model {
 
     @Column({
         type: DataType.INTEGER,
-        onDelete: "CASCADE",
+
     })
     bot_id: number;
 
     @ForeignKey(() => File)
     @Column({
         type: DataType.INTEGER,
-        onDelete: "CASCADE",
+
     })
     file_id: number;
 

@@ -4,10 +4,11 @@ import { Bot } from './entities/bot.entity';
 import { ConfigModule } from '@nestjs/config';
 import { BotController } from './bot.controller';
 import { BotService } from './bot.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
     imports: [SequelizeModule.forFeature([Bot]), ConfigModule],
     controllers: [BotController],
-    providers: [BotService],
+    providers: [BotService, JwtService],
 })
 export class BotModule { }

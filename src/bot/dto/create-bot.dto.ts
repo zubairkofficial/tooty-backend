@@ -11,8 +11,11 @@ export class CreateBotDto {
     description: string;
 
     @IsString()
-    @IsNotEmpty({ message: 'email should not be empty' })
+    @IsNotEmpty({ message: 'aimodel should not be empty' })
     ai_model: string;
+
+    @IsNumber()
+    file_id: number
 }
 
 
