@@ -15,8 +15,6 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   contact: string;
-
-  refresh_token!: CreateRefreshTokenDto;
 }
 
 export class UserLoginDto {

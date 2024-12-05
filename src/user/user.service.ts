@@ -178,6 +178,7 @@ export class UserService {
     newUser.email = createUserDto.email;
     newUser.password = hashedPassword;
     newUser.contact = createUserDto.contact;
+    newUser.role = "student"
     newUser.save();
     await this.sendOtpToEmail({ email: newUser.email });
     return {
@@ -263,7 +264,7 @@ export class UserService {
     }
 
     const verifyToken: any = await VerifyRefreshToken(refresh_token);
-    
+
     if (verifyToken.email == '') {
       throw new Error('Token expired or invalid');
     }
