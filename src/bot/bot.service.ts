@@ -9,6 +9,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { Request } from "express";
 import sequelize from "sequelize";
 import { Sequelize } from "sequelize-typescript";
+import { Chat } from "src/chat/entities/chat.entity";
 
 
 export class BotService {
@@ -17,13 +18,15 @@ export class BotService {
 
 
 
-    async queryBot(queryBot: QueryBot) {
+    async queryBot(queryBot: QueryBot, req) {
+        console.log("data from message", queryBot)
         const openAPIKey = process.env.OPEN_AI_API
         try {
-            // const bot = await Bot.findByPk(queryBot.bot_id, {
-            //     include: ['ai_model']
-            // })
-            const bot = undefined
+            const bot = await Bot.findByPk(queryBot.bot_id)
+            console.log("bot in bot", bot)
+            if (!bot) {
+                throw new Error("No bot with this id exist")
+            }
 
             const embeddings = new OpenAIEmbeddings({
                 apiKey: openAPIKey,
@@ -34,10 +37,10 @@ export class BotService {
             console.log(queryBot.query, embeddedQuery)
             const similar_data = await this.performSimilaritySearch(embeddedQuery)
 
-            const model: string = bot ? bot.ai_model : "gpt-3.5-turbo-instruct" //for development
+
 
             const llm = new OpenAI({
-                model: model,
+                model: bot?.ai_model,
                 temperature: 0,
                 maxTokens: undefined,
                 timeout: undefined,
@@ -62,6 +65,14 @@ export class BotService {
             });
 
             console.log("answer", answer)
+
+            await Chat.create({
+                bot_id: queryBot.bot_id,
+                message: answer,
+                is_bot: true,
+                user_id: req.user.sub
+            });
+
             return {
                 statusCode: 200,
                 answer: answer
@@ -74,14 +85,16 @@ export class BotService {
     }
 
 
+
     async performSimilaritySearch(queryVector: number[]) {
         const contextDataRecords = await ContextData.findAll({
             attributes: ['id', 'text_chunk', 'embedded_chunk'],
         });
 
         const similarities = contextDataRecords.map((record) => {
+            const embed_data = this.removeCurlyBracesFromArray(record.embedded_chunk)
             // const embeddedVector = JSON.parse(`${record.embedded_chunk}`); // Assuming the embedded_chunk is a stringified array
-            const similarity = this.cosineSimilarity(queryVector, record.embedded_chunk);
+            const similarity = this.cosineSimilarity(queryVector, embed_data);
             return {
                 id: record.id,
                 text_chunk: record.text_chunk,
@@ -97,6 +110,15 @@ export class BotService {
 
         return return_similar_text
     }
+
+    removeCurlyBracesFromArray(input): number[] {
+        // Convert the array to a string with curly braces
+        const arrayString = `${input}`;
+
+        // Remove the curly braces and convert back to a number array
+        return arrayString.replace(/^\{|\}$/g, '').split(',').map(num => parseFloat(num.trim()));
+    }
+
     // Cosine similarity function
     cosineSimilarity(vec1: number[], vec2: number[]): number {
         const dotProduct = vec1.reduce((sum, value, index) => sum + value * vec2[index], 0);
@@ -168,5 +190,27 @@ export class BotService {
             throw new Error("Error creating bot_contextData in DB")
         }
     }
+
+    async getAllBotsByAdmin(req: any) {
+        try {
+            // Fetch all bots with optional associations (e.g., context data)
+            const bots = await Bot.findAll({
+                // where: {
+                //     user_id: req.user.sub
+                // }
+
+            });
+
+            return {
+                statusCode: 200,
+                message: "Bots fetched successfully",
+                bots: bots, // Include the fetched bots in the response
+            };
+        } catch (error) {
+            this.logger.error("Error fetching bots: ", error.message);
+            throw new Error("Error fetching bots from the database");
+        }
+    }
+
 
 }

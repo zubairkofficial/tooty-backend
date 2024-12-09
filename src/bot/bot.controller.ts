@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { BotService } from './bot.service';
 import { CreateBotDto, DeleteBotDto, QueryBot } from './dto/create-bot.dto';
 import { CreateBotContextDto } from './dto/create-Join-bot-data.dto';
@@ -11,7 +11,7 @@ export class BotController {
     @Post('query-bot')
     @UseGuards(JwtAuthGuard)
     async queryBot(@Body() queryBot: QueryBot, @Req() req: any) {
-        return this.botService.queryBot(queryBot)
+        return this.botService.queryBot(queryBot, req)
     }
 
     @Post('create-bot')
@@ -31,5 +31,11 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     async joinBotContext(@Body() createJoinBot_Context: CreateBotContextDto, @Req() req: any) {
         return this.botService.joinBot_ContextData(createJoinBot_Context)
+    }
+
+    @Get('get-all-bots-by-admin')
+    // @UseGuards(JwtAuthGuard)
+    async getAllBots(@Req() req: any) {
+        return this.botService.getAllBotsByAdmin(req)
     }
 }

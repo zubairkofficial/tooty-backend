@@ -18,6 +18,7 @@ import { SignAccessToken, SignRefreshToken } from 'src/utils/signToken.utils';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { RefreshToken } from './entities/refreshToken.entity';
 import { VerifyRefreshToken } from 'src/utils/verifyToken.utils';
+import { Role } from 'src/utils/roles.enum';
 
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
@@ -179,7 +180,7 @@ export class UserService {
     newUser.email = createUserDto.email;
     newUser.password = hashedPassword;
     newUser.contact = createUserDto.contact;
-    newUser.role = "student"
+    newUser.role = Role.USER
     newUser.save();
     await this.sendOtpToEmail({ email: newUser.email });
     return {
@@ -337,6 +338,8 @@ export class UserService {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
+          isVerified: user.isVerified
         },
       },
     };

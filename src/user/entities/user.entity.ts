@@ -11,6 +11,7 @@ import {
 import { RefreshToken } from './refreshToken.entity';
 import { Bot } from 'src/bot/entities/bot.entity';
 import { File } from 'src/context_data/entities/file.entity';
+import { Role } from 'src/utils/roles.enum';
 
 @Table({
   tableName: 'users',
@@ -47,9 +48,10 @@ export class User extends Model {
   password: string;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.ENUM,
+    values: Object.values(Role), // You can provide the enum values here
   })
-  role: string;
+  role: Role;
 
   @Default(false)
   @Column({

@@ -20,13 +20,15 @@ export class ContextDataService {
         console.log(req.user.sub)
         try {
 
-            const files = await File.findAll({
-                where: {
-                    user_id: {
-                        [Op.eq]: req.user.sub
-                    }
-                }
-            })
+            const files = await File.findAll(
+            //     {
+            //     where: {
+            //         user_id: {
+            //             [Op.eq]: req.user.sub
+            //         }
+            //     }
+            // }
+        )
 
             return {
                 statusCode: 200,

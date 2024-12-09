@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -14,7 +14,8 @@ import { ContextData } from './context_data/entities/contextData.entity';
 import { Join_BotContextData } from './bot/entities/join_botContextData.entity';
 import { ApiModule } from './api/api.module';
 import { File } from './context_data/entities/file.entity';
-import { JwtMiddleware } from './middlewares/jwtVerify.middleware';
+import { ChatModule } from './chat/chat.module';
+import { Chat } from './chat/entities/chat.entity';
 
 @Module({
   imports: [
@@ -29,12 +30,12 @@ import { JwtMiddleware } from './middlewares/jwtVerify.middleware';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadModels: true,
-      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File],
+      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File, Chat],
       synchronize: process.env.DB_SYNCHRONIZE == 'true' ? true : false,
 
       sync: {
         force: process.env.NODE_ENV == 'development' ? false : false,
-        alter: process.env.NODE_ENV == 'development' ? false : false,
+        alter: process.env.NODE_ENV == 'development' ? true : false,
       },
       retryDelay: 3000,
     }),
@@ -46,6 +47,8 @@ import { JwtMiddleware } from './middlewares/jwtVerify.middleware';
     ContextDataModule,
 
     ApiModule,
+
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService
@@ -56,14 +59,3 @@ import { JwtMiddleware } from './middlewares/jwtVerify.middleware';
   ],
 })
 export class AppModule { }
-
-// implements NestModule {
-//   configure(consumer: MiddlewareConsumer) {
-//     consumer
-//       .apply(JwtMiddleware)  // Apply JWT verification middleware
-//       .forRoutes(
-//         'user/logout', 'user/refresh-access-token', 'bot/create-bot', 'bot/delete-bot', 'bot/query-bot', 'bot/join-bot-context', 'context-data/upload', 'context-data/delete'
-
-//       ); // Apply to specific routes or controllers, like 'profile' or '/profile/*'
-//   }
-// }

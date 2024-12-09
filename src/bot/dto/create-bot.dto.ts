@@ -29,6 +29,7 @@ export class QueryBot {
     @IsNotEmpty()
     query: string;
 
+
     @IsNumber()
     bot_id: number
 
