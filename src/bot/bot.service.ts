@@ -4,19 +4,41 @@ import { Bot } from "./entities/bot.entity";
 import { CreateBotContextDto } from "./dto/create-Join-bot-data.dto";
 import { Join_BotContextData } from "./entities/join_botContextData.entity";
 import { ContextData } from "src/context_data/entities/contextData.entity";
-import { OpenAIEmbeddings, OpenAI } from "@langchain/openai";
+import { OpenAIEmbeddings, OpenAI, DallEAPIWrapper } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { Request } from "express";
 import sequelize from "sequelize";
 import { Sequelize } from "sequelize-typescript";
 import { Chat } from "src/chat/entities/chat.entity";
+import { GenerateImageDto } from "./dto/generateImage.dto";
 
 
 export class BotService {
 
     constructor(private readonly logger = new Logger('BotService'), private readonly sequelize: Sequelize,) { }
 
+    async generateImage(generateImageDto: GenerateImageDto, req: any) {
+        const openAPIKey = process.env.OPEN_AI_API
+        try {
+            console.log(generateImageDto.answer)
+            const tool = new DallEAPIWrapper({
+                n: 1, // Default
+                model: "dall-e-3", // Default
+                apiKey: openAPIKey, // Default
+            });
 
+            const imageURL = await tool.invoke(generateImageDto.answer);
+            console.log(imageURL)
+            return {
+                statusCode: 200,
+                image: imageURL
+            }
+
+        } catch (error) {
+            console.log("an error occured while generating image", error)
+            throw new Error("an error occured while generating image")
+        }
+    }
 
     async queryBot(queryBot: QueryBot, req) {
         console.log("data from message", queryBot)
@@ -51,17 +73,39 @@ export class BotService {
             console.log(llm)
 
             const promptTemplate = new PromptTemplate({
-                inputVariables: ['text', 'query'],
+                inputVariables: ['text', 'query', 'grade', 'subject'],
                 template: `
-                  Given the following text: {text}
-                  Answer the following query: {query}
+                  You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}.  Your goal is to provide accurate, understandable, and grade-appropriate answers. Follow these detailed instructions:
+              
+                  1. **Answering Questions Within {subject}**:
+                     - If the query is related to {text} or {subject}, answer it in a way that is easy for a grade {grade} student to understand.
+                     - Even for advanced topics not typically taught in grade {grade}, simplify your explanation to make it accessible for the student's level.
+              
+                  2. **Adjusting Answer Length**:
+                     - For simple questions: Give a short, direct answer.
+                     - For moderately detailed questions: Provide a concise explanation with essential details.
+                     - For complex questions: Offer a simplified but thorough explanation suitable for a grade {grade} student.
+              
+                  3. **Handling Irrelevant Questions**:
+                     - If the query is unrelated to {subject}, politely respond:
+                       "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
+              
+                  4. **Maintaining Clarity and Tone**:
+                     - Use simple language and examples suitable for a grade {grade} student.
+                     - Maintain a friendly, respectful, and encouraging tone.
+              
+                  Respond to the following query:
+                  {query}
                 `,
             });
+
 
             const chain = promptTemplate.pipe(llm);
             const answer = await chain.invoke({
                 text: similar_data,
-                query: queryBot.query
+                query: queryBot.query,
+                grade: bot?.level,
+                subject: bot?.name
             });
 
             console.log("answer", answer)
@@ -73,9 +117,11 @@ export class BotService {
                 user_id: req.user.sub
             });
 
+
             return {
                 statusCode: 200,
-                answer: answer
+                answer: answer,
+
             }
 
         } catch (error: any) {

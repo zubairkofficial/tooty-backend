@@ -3,10 +3,17 @@ import { BotService } from './bot.service';
 import { CreateBotDto, DeleteBotDto, QueryBot } from './dto/create-bot.dto';
 import { CreateBotContextDto } from './dto/create-Join-bot-data.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
+import { GenerateImageDto } from './dto/generateImage.dto';
 
 @Controller('bot')
 export class BotController {
     constructor(private readonly botService: BotService) { }
+
+    @Post('generate-image')
+    @UseGuards(JwtAuthGuard)
+    async generateImage(@Body() generateImageDto: GenerateImageDto, @Req() req: any) {
+        return this.botService.generateImage(generateImageDto, req)
+    }
 
     @Post('query-bot')
     @UseGuards(JwtAuthGuard)

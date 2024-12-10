@@ -14,6 +14,10 @@ export class CreateBotDto {
     @IsNotEmpty({ message: 'aimodel should not be empty' })
     ai_model: string;
 
+    @IsString()
+    @IsNotEmpty({ message: 'level should not be empty' })
+    level: string;
+
     @IsNumber()
     file_id: number
 }
