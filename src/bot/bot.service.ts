@@ -11,11 +11,18 @@ import sequelize from "sequelize";
 import { Sequelize } from "sequelize-typescript";
 import { Chat } from "src/chat/entities/chat.entity";
 import { GenerateImageDto } from "./dto/generateImage.dto";
-
+import * as path from 'path'
+import * as fs from 'fs'
+import axios from 'axios'
+import { ChatService } from "src/chat/chat.service";
 
 export class BotService {
 
-    constructor(private readonly logger = new Logger('BotService'), private readonly sequelize: Sequelize,) { }
+    constructor(
+        private readonly logger = new Logger('BotService'),
+        private readonly sequelize: Sequelize,
+        private readonly chatService: ChatService
+    ) { }
 
     async generateImage(generateImageDto: GenerateImageDto, req: any) {
         const openAPIKey = process.env.OPEN_AI_API
@@ -29,14 +36,83 @@ export class BotService {
 
             const imageURL = await tool.invoke(generateImageDto.answer);
             console.log(imageURL)
+            const imageSaveResult = await this.downloadImage(imageURL, req, generateImageDto.chat_id)
+            console.log("image save url", imageSaveResult)
+            if (imageSaveResult == "") {
+                throw new Error("error creating image chat")
+            }
+            const chat = await Chat.create({
+                is_bot: true,
+                bot_id: generateImageDto.bot_id,
+                message: "",
+                image_url: imageSaveResult,
+                user_id: req.user.sub
+            })
+            console.log(imageURL)
             return {
                 statusCode: 200,
-                image: imageURL
+                data: chat
             }
 
         } catch (error) {
             console.log("an error occured while generating image", error)
             throw new Error("an error occured while generating image")
+        }
+    }
+
+    async downloadImage(imageUrl: string, req: any, chat_id: number): Promise<string> {
+        try {
+            console.log("came here 1")
+            // Define the save path
+            const savePath = path.join(__dirname, '..', '..', 'images');
+
+            console.log("came here 2", savePath)
+            // Ensure the chatImages directory exists
+            if (!fs.existsSync(savePath)) {
+                console.log("came here n")
+                fs.mkdirSync(savePath, { recursive: true });
+            }
+
+            // Extract the file name from the URL and set the file path
+            const fileName = req.user.sub + "-" + chat_id + "-" + Math.random() * 10000 + ".png"
+
+            const filePath = path.join(savePath, fileName);
+            console.log(`
+                {
+                fileName: ${fileName},
+                filePath: ${filePath}
+                }
+                `)
+            // Create a writable stream
+            const writer = fs.createWriteStream(filePath);
+
+            // Fetch the image
+            const response = await axios({
+                url: imageUrl,
+                method: 'GET',
+                responseType: 'stream',
+            });
+
+            // Pipe the response data to the writable stream
+            response.data.pipe(writer);
+
+            // Return a promise that resolves when the file is written
+            const promise = new Promise((resolve, reject) => {
+                writer.on('finish', () => resolve(`Image saved at ${filePath}`));
+                writer.on('error', reject);
+            });
+            const result = promise.then((message) => {
+                console.log(message)
+                return fileName
+            })
+                .catch((error) => {
+                    console.log(error)
+                    return ""
+                })
+            return result
+        } catch (error) {
+            console.log("an error ocured in download image fnc", error)
+            return ""
         }
     }
 
@@ -75,29 +151,38 @@ export class BotService {
             const promptTemplate = new PromptTemplate({
                 inputVariables: ['text', 'query', 'grade', 'subject'],
                 template: `
-                  You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}.  Your goal is to provide accurate, understandable, and grade-appropriate answers. Follow these detailed instructions:
-              
-                  1. **Answering Questions Within {subject}**:
-                     - If the query is related to {text} or {subject}, answer it in a way that is easy for a grade {grade} student to understand.
-                     - Even for advanced topics not typically taught in grade {grade}, simplify your explanation to make it accessible for the student's level.
-              
-                  2. **Adjusting Answer Length**:
-                     - For simple questions: Give a short, direct answer.
-                     - For moderately detailed questions: Provide a concise explanation with essential details.
-                     - For complex questions: Offer a simplified but thorough explanation suitable for a grade {grade} student.
-              
-                  3. **Handling Irrelevant Questions**:
-                     - If the query is unrelated to {subject}, politely respond:
-                       "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
-              
-                  4. **Maintaining Clarity and Tone**:
-                     - Use simple language and examples suitable for a grade {grade} student.
-                     - Maintain a friendly, respectful, and encouraging tone.
-              
-                  Respond to the following query:
-                  {query}
+                    You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}. Your goal is to provide accurate, understandable, and grade-appropriate answers. Follow these detailed instructions:
+            
+                    1. **Answering Questions Within {subject}**:
+                        - If the query is related to {text} or {subject}, answer it in a way that is easy for a grade {grade} student to understand.
+                        - Even for advanced topics not typically taught in grade {grade}, simplify your explanation to make it accessible for the student's level.
+            
+                    2. **Adjusting Answer Length**:
+                        - For simple questions: Give a short, direct answer.
+                        - For moderately detailed questions: Provide a concise explanation with essential details.
+                        - For complex questions: Offer a simplified but thorough explanation suitable for a grade {grade} student.
+            
+                    3. **Handling Irrelevant Questions**:
+                        - If the query is unrelated to {subject}, politely respond:
+                          "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
+                        - Regardless of the query's relevance, always return the response in the following format:
+                          - **Answer**: "I am an expert in this subject" (if the query is irrelevant).
+                          - **shouldGenerateImage**: false (unless the query specifically asks for an image).
+            
+                    4. **Maintaining Clarity and Tone**:
+                        - Use simple language and examples suitable for a grade {grade} student.
+                        - Maintain a friendly, respectful, and encouraging tone.
+            
+                    5. **Response Format**:
+                        - Return a JSON object with two fields: \`answer\` and \`shouldGenerateImage\`.
+                        - If the answer requires illustrations, or if the query specifically asks for images/visuals/illustrations, set \`shouldGenerateImage\` to \`true\`.
+                        - Otherwise, set \`shouldGenerateImage\` to \`false\`.
+            
+                    Respond to the following query:
+                    {query}
                 `,
             });
+
 
 
             const chain = promptTemplate.pipe(llm);
@@ -108,19 +193,32 @@ export class BotService {
                 subject: bot?.name
             });
 
-            console.log("answer", answer)
+            console.log(answer)
 
-            await Chat.create({
+            const answerMatch = answer.match(/"answer":\s*"([^"]+)"/);
+            const a = answerMatch ? answerMatch[1] : null;
+
+            // Extract the "shouldGenerateImage" value using regular expression
+            const shouldGenerateImageMatch = answer.match(/"shouldGenerateImage":\s*(true|false)/);
+
+            const b = shouldGenerateImageMatch ? shouldGenerateImageMatch[1] === 'true' : null; // Extracted boolean value
+            console.log("strigify answer", a, typeof a)
+
+            console.log("answer", b, typeof b)
+
+            const botRes = await Chat.create({
                 bot_id: queryBot.bot_id,
-                message: answer,
+                message: a,
                 is_bot: true,
+                image_url: "",
                 user_id: req.user.sub
             });
 
 
             return {
                 statusCode: 200,
-                answer: answer,
+                data: botRes,
+                do_generate_image: b
 
             }
 

@@ -1,6 +1,8 @@
 
 import { Op } from 'sequelize';
-
+import path from 'path'
+import fs from 'fs'
+import axios from 'axios'
 import { CreateChatDto } from './dto/create-chat.dto';
 
 import { Chat } from './entities/chat.entity';
@@ -45,25 +47,11 @@ export class ChatService {
             const chat = await Chat.create({
                 bot_id: createChatDto.bot_id,
                 message: createChatDto.message,
-                is_bot: createChatDto.is_bot,
-                user_id: req.user.sub
+                is_bot: false,
+                user_id: req.user.sub,
+                image_url: ""
             });
-
-            // if (!chat.is_bot) {
-            //     const queryBot: QueryBot = { query: chat.message, bot_id: createChatDto.bot_id }
-            //     console.log("query bot in message service", queryBot)
-            //     const message_reply = await this.botService.queryBot(queryBot)
-
-            //     if (message_reply.statusCode == 200) {
-            //         return {
-            //             statusCode: 200,
-            //             message: "user message created and answer returned",
-            //             answer: message_reply.answer
-            //         }
-            //     } else {
-            //         throw new Error("Error querying query from user")
-            //     }
-            // }
+            console.log("create user message", chat)
 
             return {
                 statusCode: 200,
@@ -74,7 +62,7 @@ export class ChatService {
             console.log(error)
             throw new Error('error creating message')
         }
-
-
     }
+
+
 }

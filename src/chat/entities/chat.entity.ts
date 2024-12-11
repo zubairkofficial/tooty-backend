@@ -17,8 +17,11 @@ export class Chat extends Model {
   @Column
   user_id: number;
 
-  @Column({ type: DataType.TEXT, allowNull: false })
+  @Column({ type: DataType.TEXT })
   message: string;
+
+  @Column({ type: DataType.STRING })
+  image_url: string;
 
   @Column({ type: DataType.BOOLEAN, defaultValue: false })
   is_bot: boolean;
@@ -28,5 +31,4 @@ export class Chat extends Model {
 
   @BelongsTo(() => Bot)
   bot!: Bot;
-
 }

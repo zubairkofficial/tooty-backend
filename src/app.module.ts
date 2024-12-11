@@ -16,9 +16,15 @@ import { ApiModule } from './api/api.module';
 import { File } from './context_data/entities/file.entity';
 import { ChatModule } from './chat/chat.module';
 import { Chat } from './chat/entities/chat.entity';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'images'), // Path to the static files
+      serveRoot: '/static/images', // Serve files under the `/static` URL path (optional)
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),

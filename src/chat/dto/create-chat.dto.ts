@@ -1,17 +1,17 @@
-import { IsNumber, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNumber, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateChatDto {
- 
-
   @IsNumber()
   bot_id: number;
 
+  @IsString()
+  image_url: string
 
-  @IsNotEmpty()
+  @IsString()
   message: string;
 
-  @IsNotEmpty()
-  is_bot: boolean;
+  // @IsNotEmpty()
+  // is_bot: boolean;
 }
 
 
