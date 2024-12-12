@@ -83,7 +83,7 @@ export class ContextDataService {
         const context_file = await File.create({
             file_name: createFileDto.file_name,
             slug: createFileDto.slug,
-            user_id: req.user.sub
+            user_id: req.user.sub,
         })
 
         const parentDoc = await pdf(file.buffer)
