@@ -21,14 +21,14 @@ export class ContextDataService {
         try {
 
             const files = await File.findAll(
-            //     {
-            //     where: {
-            //         user_id: {
-            //             [Op.eq]: req.user.sub
-            //         }
-            //     }
-            // }
-        )
+                //     {
+                //     where: {
+                //         user_id: {
+                //             [Op.eq]: req.user.sub
+                //         }
+                //     }
+                // }
+            )
 
             return {
                 statusCode: 200,
@@ -115,6 +115,7 @@ export class ContextDataService {
                     })
                     .catch(err => {
                         console.error("Error creating context data:", err);
+                        throw new Error("error creating embeddings > error creating context data")
                     });
             });
             // Wait for all promises to complete
