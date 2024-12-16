@@ -6,6 +6,7 @@ import {
     Model,
     PrimaryKey,
     Table,
+    Unique,
 } from 'sequelize-typescript';
 
 import { User } from 'src/user/entities/user.entity';
@@ -26,6 +27,14 @@ export class API extends Model {
         type: DataType.STRING,
     })
     api_key: string;
+
+
+    //to make the name of api key unique in the DB, we will join the api key name from user with the user_id
+    @Unique
+    @Column({
+        type: DataType.STRING,
+    })
+    api_name: string;
 
     @ForeignKey(() => User)
     @Column({

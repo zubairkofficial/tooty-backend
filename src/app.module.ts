@@ -18,6 +18,17 @@ import { ChatModule } from './chat/chat.module';
 import { Chat } from './chat/entities/chat.entity';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+// import { UserProfileService } from './user-profile/user-profile.service';
+// import { UserProfileController } from './user-profile/user-profile.controller';
+// import { UserProfileModule } from './user-profile/user-profile.module';
+// import { ProfileService } from './profile/profile.service';
+import { ProfileController } from './profile/profile.controller';
+import { Profile } from './profile/entities/profile.entity';
+import { API } from './api/entities/api.entity';
+import { UserSeeder } from './seeds/user.seeder';
+import { ProfileModule } from './profile/profile.module';
+import { JwtService } from '@nestjs/jwt';
+// import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -36,7 +47,7 @@ import { join } from 'path';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadModels: true,
-      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File, Chat],
+      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File, Chat, Profile, API],
       synchronize: process.env.DB_SYNCHRONIZE == 'true' ? true : false,
 
       sync: {
@@ -55,9 +66,14 @@ import { join } from 'path';
     ApiModule,
 
     ChatModule,
+
+    ProfileModule,
+
   ],
   controllers: [AppController],
-  providers: [AppService
+  providers: [AppService, 
+    UserSeeder
+    //  ProfileService
     //   , {
     //   provide: APP_GUARD,
     //   useClass: RolesGuard

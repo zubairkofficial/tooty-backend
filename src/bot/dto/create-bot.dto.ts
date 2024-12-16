@@ -19,7 +19,8 @@ export class CreateBotDto {
     level: string;
 
     @IsNumber()
-    file_id: number
+    file_id: number;
+
 }
 
 

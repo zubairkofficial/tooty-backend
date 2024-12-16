@@ -4,6 +4,7 @@ import { CreateBotDto, DeleteBotDto, QueryBot } from './dto/create-bot.dto';
 import { CreateBotContextDto } from './dto/create-Join-bot-data.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 import { GenerateImageDto } from './dto/generateImage.dto';
+import { GetBotByLevelDto } from './dto/get-bot-by-level.dto';
 
 @Controller('bot')
 export class BotController {
@@ -24,7 +25,7 @@ export class BotController {
     @Post('create-bot')
     @UseGuards(JwtAuthGuard)
     async createBot(@Body() createBotDto: CreateBotDto, @Req() req: any) {
-        console.log(createBotDto)
+
         return this.botService.createBot(createBotDto, req)
     }
 
@@ -41,8 +42,14 @@ export class BotController {
     }
 
     @Get('get-all-bots-by-admin')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     async getAllBots(@Req() req: any) {
         return this.botService.getAllBotsByAdmin(req)
+    }
+
+    @Get('get-bots-by-level')
+    @UseGuards(JwtAuthGuard)
+    async getBotsByLevel(@Req() req: any) {
+        return this.botService.getBotsByLevel(req)
     }
 }

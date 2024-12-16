@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, isString, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsNumber, isString, IsString } from 'class-validator';
 import { CreateRefreshTokenDto } from './create-refreshToken.dto';
 
 export class CreateUserDto {
@@ -29,6 +29,11 @@ export class UserLogoutDto {
   @IsString()
   @IsNotEmpty()
   refresh_token: string;
+}
+
+export class GetUserDto {
+ @IsNumber()
+ user_id: number
 }
 
 export class RefreshAccessToken {

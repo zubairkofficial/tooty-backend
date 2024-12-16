@@ -1,35 +1,78 @@
-import { AddAPIkeyDto } from "./dto/create-api.dto";
+import { Op } from "sequelize";
 import { API } from "./entities/api.entity";
+import { UpdateApiKeyDto } from "./dto/update-api.dto";
 
 
 export class ApiService {
 
-    async addAPIkey(addAPIkeyDto: AddAPIkeyDto, req: any) {
-        try {
-            await API.create({
-                api_key: addAPIkeyDto.api_key,
-                user_id: req.body.user.user_id //get it throough token validation
-            })
 
+    // async getApiKey(getApiKeyDto: getApiKeyDto, req: any) {
+
+    //     console.log("get api name key",api_name)
+    //     try {
+    //         const data = await API.findOne({
+    //             where: {
+    //                 api_name: {
+    //                     [Op.eq]: get
+    //                 }
+    //             }
+    //         })
+    //         return {
+    //             statusCode: 200,
+    //             api: data.api_key
+    //         }
+    //     } catch (error) {
+    //         return {
+    //             api: ""
+    //         }
+    //     }
+    // }
+
+    async getAllApiKeys(req: any) {
+        try {
+            const data = await API.findAll({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
             return {
                 statusCode: 200,
-                message: "api added successfully"
+                apis: data
             }
         } catch (error) {
-            throw new Error("failed adding api key")
+            throw new Error("failed gettting api keys")
         }
-
     }
 
+    // async addAPIkey(addAPIkeyDto: AddAPIkeyDto, req: any) {
+    //     try {
+    //         await API.create({
+    //             api_key: addAPIkeyDto.api_key,
+    //             api_name: addAPIkeyDto.api_name + "-" + req.user.sub,
+    //             user_id: req.user.sub //get it throough token validation
+    //         })
 
-    async updateApiKey(addAPIkeyDto: AddAPIkeyDto, req: any) {
+    //         return {
+    //             statusCode: 200,
+    //             message: "api added successfully"
+    //         }
+    //     } catch (error) {
+    //         throw new Error("failed adding api key")
+    //     }
+    // }
+
+
+    async updateApiKey(updateApiKeyDto: UpdateApiKeyDto, req: any) {
         try {
             await API.update({
-                api_key: addAPIkeyDto.api_key,
+                api_key: updateApiKeyDto.api_key,
             },
                 {
                     where: {
-                        user_id: req.body.user.user_id
+                        user_id: req.user.sub,
+                        id: updateApiKeyDto.id
                     }
                 })
             return {
@@ -41,5 +84,23 @@ export class ApiService {
         }
 
     }
+    // async deleteApiKey(deleteApiKeyDto: DeleteApiKeyDto, req: any) {
+    //     try {
+    //         await API.destroy({
+    //             where: {
+    //                 id: {
+    //                     [Op.eq]: deleteApiKeyDto.id
+    //                 }
+    //             }
+    //         })
+    //         return {
+    //             statusCode: 200,
+    //             message: "api deleted successfully"
+    //         }
+    //     } catch (error) {
+    //         throw new Error("failed deleting api key")
+    //     }
+
+    // }
 
 }

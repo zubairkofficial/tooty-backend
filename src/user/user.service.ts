@@ -1,6 +1,7 @@
 import { UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
 import {
   CreateUserDto,
+  GetUserDto,
   RefreshAccessToken,
   UserLoginDto,
   UserLogoutDto,
@@ -20,8 +21,13 @@ import { RefreshToken } from './entities/refreshToken.entity';
 import { VerifyRefreshToken } from 'src/utils/verifyToken.utils';
 import { Role } from 'src/utils/roles.enum';
 
+import { Transaction } from 'sequelize';
+import { Profile } from 'src/profile/entities/profile.entity';
+import { Op } from 'sequelize';
+
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
+
 
   private generateOtp(): string {
     const otp = randomInt(100000, 999999).toString(); // Generate a 6-digit OTP
@@ -162,6 +168,7 @@ export class UserService {
 
   async signup(createUserDto: CreateUserDto) {
     console.log(createUserDto)
+
     const existingUser = await User.findOne({
       where: { email: createUserDto.email },
     });
@@ -181,7 +188,12 @@ export class UserService {
     newUser.password = hashedPassword;
     newUser.contact = createUserDto.contact;
     newUser.role = Role.USER
-    newUser.save();
+    newUser.save().then(async (u) => {
+      await Profile.create({
+        level: "",
+        user_id: u.id
+      })
+    });
     await this.sendOtpToEmail({ email: newUser.email });
     return {
       message: 'You have successfully registered.',
@@ -239,6 +251,7 @@ export class UserService {
   async generateRefreshToken(payload: {
     sub: number;
     email: string;
+    level: string
   }): Promise<string> {
     const refreshToken = SignRefreshToken(payload);
     try {
@@ -274,6 +287,7 @@ export class UserService {
     const accessToken = SignAccessToken({
       sub: verifyToken.sub,
       email: verifyToken.email,
+      level: 'K12'
     });
 
     return {
@@ -316,7 +330,7 @@ export class UserService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, level: 'K12' };
 
     const refreshToken = await this.generateRefreshToken(payload);
 
@@ -343,5 +357,49 @@ export class UserService {
         },
       },
     };
+  }
+
+
+  async getAllStudents(req: any) {
+    try {
+      const students = await User.findAll({
+        attributes: {
+          exclude: ["password"]
+        },
+        where: {
+
+          role: {
+            [Op.eq]: Role.USER
+          }
+        },
+
+      })
+
+      return {
+        statusCode: 200,
+        students: students
+      }
+
+    } catch (error) {
+      throw new Error("Error fetching students")
+    }
+  }
+
+  async getStudent(getStudentDto: GetUserDto, req: any) {
+    try {
+      const student = await User.findByPk(getStudentDto.user_id, {
+        attributes: {
+          exclude: ["password"]
+        },
+      })
+
+      return {
+        statusCode: 200,
+        data: student
+      }
+
+    } catch (error) {
+      throw new Error("Error fetching students")
+    }
   }
 }

@@ -1,7 +1,8 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get } from '@nestjs/common';
 import { UserService } from './user.service';
 import {
   CreateUserDto,
+  GetUserDto,
   RefreshAccessToken,
   UserLoginDto,
   UserLogoutDto,
@@ -14,6 +15,19 @@ import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 @Controller('auth')
 export class UserController {
   constructor(private readonly userService: UserService) { }
+
+
+  //where role is user
+  @Post('get-student')
+  async getStudent(@Body() getStudentDto: GetUserDto, @Req() req: any) {
+    return this.userService.getStudent(getStudentDto, req)
+  }
+
+  //where role is user
+  @Get('get-all-students')
+  async getAllUser(@Req() req: any) {
+    return this.userService.getAllStudents(req)
+  }
 
   // User Signup
   @Post('signup')

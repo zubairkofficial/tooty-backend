@@ -9,9 +9,12 @@ import {
   Table,
 } from 'sequelize-typescript';
 import { RefreshToken } from './refreshToken.entity';
-import { Bot } from 'src/bot/entities/bot.entity';
+// import { Bot } from '../../bot/entities/bot.entity';
 import { File } from 'src/context_data/entities/file.entity';
 import { Role } from 'src/utils/roles.enum';
+import { Profile } from 'src/profile/entities/profile.entity';
+import { API } from 'src/api/entities/api.entity';
+import { Bot } from 'src/bot/entities/bot.entity';
 
 @Table({
   tableName: 'users',
@@ -61,6 +64,12 @@ export class User extends Model {
 
   @HasOne(() => RefreshToken)
   refresh_token!: RefreshToken;
+
+  @HasOne(() => Profile)
+  profile!: Profile;
+
+  @HasMany(() => API)
+  api!: API
 
   @HasMany(() => Bot)
   bots!: Bot[]
