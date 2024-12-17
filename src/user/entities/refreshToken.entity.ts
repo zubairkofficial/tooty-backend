@@ -6,6 +6,7 @@ import {
   Model,
   PrimaryKey,
   Table,
+  Unique,
 } from 'sequelize-typescript';
 import { User } from './user.entity';
 
@@ -27,6 +28,7 @@ export class RefreshToken extends Model {
   })
   refresh_token: string;
 
+  @Unique
   @ForeignKey(() => User)
   @Column
   user_id: number;

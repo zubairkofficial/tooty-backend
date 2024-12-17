@@ -24,6 +24,7 @@ import { Role } from 'src/utils/roles.enum';
 import { Transaction } from 'sequelize';
 import { Profile } from 'src/profile/entities/profile.entity';
 import { Op } from 'sequelize';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
@@ -131,7 +132,28 @@ export class UserService {
     };
   }
 
-  async updatePassword(createForgotDto: UpdatePasswordDto) {
+  async updateUser(updateUserDto: UpdateUserDto, req: any) {
+    const { name, contact, email, id } = updateUserDto;
+
+    await User.update({
+      email,
+      contact,
+      name
+    }, {
+      where: {
+        id: {
+          [Op.eq]: id
+        }
+      }
+    })
+
+    return {
+      message: 'Successfully updated the user',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  async updatePassword(createForgotDto: UpdatePasswordDto, req: any) {
     const { password, otp, email } = createForgotDto;
 
     const otpRecord = await Otp.findOne({
@@ -251,7 +273,8 @@ export class UserService {
   async generateRefreshToken(payload: {
     sub: number;
     email: string;
-    level: string
+    level: string;
+    role: string
   }): Promise<string> {
     const refreshToken = SignRefreshToken(payload);
     try {
@@ -284,15 +307,14 @@ export class UserService {
       throw new Error('Token expired or invalid');
     }
 
-    const accessToken = SignAccessToken({
-      sub: verifyToken.sub,
-      email: verifyToken.email,
-      level: 'K12'
-    });
+    const payload = { sub: verifyToken?.sub, email: verifyToken.email, role: verifyToken?.role, level: verifyToken?.level ? verifyToken.level : "" };
+
+    console.log("payload in refresh access token", payload)
+    const accessToken = SignAccessToken(payload);
 
     return {
       accessToken: accessToken,
-      statuCode: 200,
+      statusCode: 200,
     };
   }
 
@@ -322,6 +344,13 @@ export class UserService {
     if (!user) {
       throw new UnauthorizedException('No User exist');
     }
+    const profile = await Profile.findOne({
+      where: {
+        user_id: {
+          [Op.eq]: user.id
+        }
+      }
+    })
     this.logger.log(`USER in db , ${user}`);
 
     this.logger.log(`USER in db , ${user.password} \n ${password}`);
@@ -330,9 +359,24 @@ export class UserService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { sub: user.id, email: user.email, level: 'K12' };
+    //check if refresh token already exist as user id is unique
+    const refresh_token_exist = await RefreshToken.findOne({
+      where: {
+        user_id: {
+          [Op.eq]: user?.id
+        }
+      }
+    })
 
-    const refreshToken = await this.generateRefreshToken(payload);
+    let refreshToken = ""
+    const payload = { sub: user.id, email: user.email, role: user?.role, level: profile?.level ? profile.level : "" };
+    if (refresh_token_exist) {
+      refreshToken = refresh_token_exist?.refresh_token
+      console.log("using old refresh key")
+    } else {
+      refreshToken = await this.generateRefreshToken(payload);
+      console.log("using new refresh key")
+    }
 
     if (refreshToken == '') {
       throw new Error('Fialed to LogIn');
@@ -353,7 +397,8 @@ export class UserService {
           name: user.name,
           email: user.email,
           role: user.role,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          level: profile?.level ? profile.level : ""
         },
       },
     };

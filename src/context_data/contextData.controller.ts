@@ -4,6 +4,9 @@ import { ContextDataService } from './contextData.service';
 import { CreateFileDto, DeleteFileDto } from './dto/create-contextData.dto';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
+import { Roles } from 'src/decorators/roles.decorator';
+import { Role } from 'src/utils/roles.enum';
+import { RolesGuard } from 'src/guards/roles.guard';
 
 @Controller('context-data')
 export class ContextDataController {
@@ -11,7 +14,8 @@ export class ContextDataController {
 
 
     @Post('upload')
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @UseInterceptors(
         FileInterceptor('file'),
     )
@@ -24,7 +28,9 @@ export class ContextDataController {
 
     }
     @Post('delete')
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+
     async deleteFile(@Body() deleteFileDto: DeleteFileDto, @Req() req: any) {
 
         return this.contextDataService.deleteFile(deleteFileDto, req)
@@ -32,7 +38,8 @@ export class ContextDataController {
     }
 
     @Get('files-by-user')
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     async getFiles(@Req() req: any) {
         return this.contextDataService.getAllFilesByUser(req)
 

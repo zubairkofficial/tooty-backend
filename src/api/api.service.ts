@@ -28,6 +28,24 @@ export class ApiService {
     //     }
     // }
 
+    async getDeepGramApi(req: any) {
+        try {
+            const data = await API.findOne({
+                where: {
+                    api_name: {
+                        [Op.eq]: "deepgram"
+                    }
+                }
+            })
+            return {
+                statusCode: 200,
+                api: data
+            }
+        } catch (error) {
+            throw new Error("failed gettting api key")
+        }
+    }
+
     async getAllApiKeys(req: any) {
         try {
             const data = await API.findAll({

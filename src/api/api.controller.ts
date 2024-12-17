@@ -7,15 +7,28 @@ import { ApiService } from './api.service';
 
 import { UpdateApiKeyDto } from './dto/update-api.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
+import { Roles } from 'src/decorators/roles.decorator';
+import { Role } from 'src/utils/roles.enum';
+import { RolesGuard } from 'src/guards/roles.guard';
 // import { RolesGuard } from 'src/guards/roles.guard';
 
 @Controller('api')
 export class ApiController {
     constructor(private readonly apiServices: ApiService) { }
 
+
+    @Get('get-deepgram-api')
+    @Roles(Role.USER)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+
+    async getDeepGramAapi(@Req() req: any) {
+        return this.apiServices.getDeepGramApi(req)
+    }
+
     //get All api key against admin
     @Get('get-all-apis')
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     // @Roles(Role.ADMIN, Role.USER)
     async getAllApiKeys(@Req() req: any) {
         return this.apiServices.getAllApiKeys(req)
@@ -36,7 +49,8 @@ export class ApiController {
     // }
 
     @Post('update')
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     async updateAPIkey(@Body() updateApiKeyDto: UpdateApiKeyDto, @Req() req: any) {
         return this.apiServices.updateApiKey(updateApiKeyDto, req)
     }
