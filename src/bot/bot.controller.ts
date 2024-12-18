@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { BotService } from './bot.service';
-import { CreateBotDto, DeleteBotDto, QueryBot } from './dto/create-bot.dto';
-import { CreateBotContextDto } from './dto/create-Join-bot-data.dto';
+import { CreateBotDto, DeleteBotDto, GetBotDto, QueryBot, UpdateBotDto } from './dto/create-bot.dto';
+import { CreateBotContextDto, GetBotContextDto, UpdateBotContextDto } from './dto/create-Join-bot-data.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 import { GenerateImageDto } from './dto/generateImage.dto';
 import { GetBotByLevelDto } from './dto/get-bot-by-level.dto';
@@ -35,6 +35,14 @@ export class BotController {
         return this.botService.createBot(createBotDto, req)
     }
 
+
+    @Post('update-bot')
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    async updateBot(@Body() updateBotDto: UpdateBotDto, @Req() req: any) {
+
+        return this.botService.updateBot(updateBotDto, req)
+    }
     @Post('delete-bot')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,12 +50,39 @@ export class BotController {
         return this.botService.deleteBot(deleteBotDto)
     }
 
-    @Post('join-bot-context')
+
+    // @Post('create-join-bot-context')
+    // @Roles(Role.ADMIN)
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    // async createJoinBotContext(@Body() createBotContextDto: CreateBotContextDto, @Req() req: any) {
+    //     return this.botService.createJoinBot_ContextData(createBotContextDto)
+    // }
+
+
+
+    @Post('update-join-bot-context')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    async joinBotContext(@Body() createJoinBot_Context: CreateBotContextDto, @Req() req: any) {
-        return this.botService.joinBot_ContextData(createJoinBot_Context)
+    async updateJoinBotContext(@Body() updateJoinBot_Context: UpdateBotContextDto, @Req() req: any) {
+        return this.botService.updateJoinBot_ContextData(updateJoinBot_Context)
     }
+
+
+    @Post('get-join-bot-context')
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    async getJoinBotContext(@Body() getBotContextDto: GetBotContextDto, @Req() req: any) {
+        return this.botService.getBotContextDto(getBotContextDto)
+    }
+
+
+
+    @Post('get-bot')
+    @UseGuards(JwtAuthGuard)
+    async getBot(@Body() getBotDto: GetBotDto, @Req() req: any) {
+        return this.botService.getBot(getBotDto)
+    }
+
 
     @Get('get-all-bots-by-admin')
     @Roles(Role.ADMIN)

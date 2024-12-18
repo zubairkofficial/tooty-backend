@@ -1,12 +1,15 @@
 import { IsDate, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class UpdateProfileDto {
-   
+
 
     @IsString({ message: 'level should be string' })
     @IsNotEmpty({ message: 'level should not be empty' })
     level: string;
 
+    @IsString({ message: 'level should be string' })
+    @IsNotEmpty({ message: 'level should not be empty' })
+    user_roll_no: string;
     // @IsString({ message: 'bio should be string' })
     // @IsNotEmpty({ message: 'bio should not be empty' })
     // bio: string;

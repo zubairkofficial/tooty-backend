@@ -21,7 +21,7 @@ export class ProfileController {
     }
 
     @Post('get-profile')
-    @Roles(Role.ADMIN)
+    @Roles(Role.ADMIN, Role.USER, Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getProfile(@Body() getProfileDto: GetProfileDto, @Req() req: any) {
         return this.profileServices.getProfile(getProfileDto, req)

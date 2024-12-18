@@ -1,14 +1,27 @@
-import { IsInt, IsNotEmpty, IsString } from "class-validator";
+import { IsInt, IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class CreateBotContextDto {
-    readonly id: number;
 
-    @IsInt({ message: 'bot_id should be INTEGER' })
+    @IsNumber()
     bot_id: number;
 
-    @IsInt({ message: 'context-data_id should be INTEGER' })
+    @IsNumber()
+    file_id: number;
 
-    context_data_id: Array<number>;
+
+}
+
+export class UpdateBotContextDto {
+
+    @IsNumber()
+    bot_id: number;
+
+    @IsNumber()
+    file_id: number;
 
 
+}
+export class GetBotContextDto {
+    @IsNumber()
+    bot_id: number;
 }

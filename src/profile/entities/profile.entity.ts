@@ -29,6 +29,11 @@ export class Profile extends Model {
     })
     level: string;
 
+    @Column({
+        type: DataType.STRING,
+    })
+    user_roll_no: string;
+
 
 
     // @Column({

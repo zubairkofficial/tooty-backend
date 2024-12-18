@@ -6,6 +6,9 @@ import { ContextData } from './entities/contextData.entity';
 import { File } from './entities/file.entity';
 import { Op } from 'sequelize';
 import { Request } from 'express';
+import { API } from 'src/api/entities/api.entity';
+import { Bot } from 'src/bot/entities/bot.entity';
+import { Join_BotContextData } from 'src/bot/entities/join_botContextData.entity';
 
 interface Chunk {
     id: number;
@@ -47,14 +50,25 @@ export class ContextDataService {
                         [Op.eq]: deleteFileDto.id
                     }
                 }
-            }).then(() => {
-                ContextData.destroy({
+            }).then(async () => {
+                await ContextData.destroy({
                     where: {
                         file_id: {
                             [Op.eq]: deleteFileDto.id
                         }
                     }
                 })
+
+                await Join_BotContextData.update({
+                    file_id: null
+                }, {
+                    where: {
+                        file_id: {
+                            [Op.eq]: deleteFileDto.id
+                        }
+                    }
+                })
+
             }).then(result => {
                 console.log("sucees",);
             })
@@ -75,61 +89,79 @@ export class ContextDataService {
 
         console.log("req user", req.user)
         console.log('File received:', file.originalname, createFileDto.file_name);
-
+        let api_key = ""
         if (!file.originalname.endsWith('.pdf')) {
             throw new Error('Only PDF files are supported');
         }
 
-        const context_file = await File.create({
-            file_name: createFileDto.file_name,
-            slug: createFileDto.slug,
-            user_id: req.user.sub,
+        const api = await API.findOne({
+            where: {
+                api_name: {
+                    [Op.eq]: 'open-ai'
+                }
+            }
         })
 
-        const parentDoc = await pdf(file.buffer)
-        console.log(parentDoc)
 
 
-        const subDocs = this.splitTextIntoChunks(parentDoc.text, 1000, 20);
-
-        console.log(subDocs)
-        const embeddings = new OpenAIEmbeddings({
-            apiKey: process.env.OPEN_AI_API,
-            model: process.env.OPEN_AI_EMBEDDING_MODEL,
-            dimensions: 1536
-        });
-
-        try {
-            const promises = subDocs.map(({ data }) => {
-                return embeddings.embedQuery(data)
-                    .then(embedded_data => {
-                        console.log("This is embedded data", embedded_data);
-                        return ContextData.create({
-                            text_chunk: data,
-                            embedded_chunk: `{${embedded_data}}`,
-                            file_id: context_file.id,
-                        });
-                    })
-                    .then(result => {
-                        console.log("Result:", result);
-                    })
-                    .catch(err => {
-                        console.error("Error creating context data:", err);
-                        throw new Error("error creating embeddings > error creating context data")
-                    });
-            });
-            // Wait for all promises to complete
-            await Promise.all(promises);
-
-            return {
-                statusCode: 200,
-                message: "Success creating context data"
-            };
-        } catch (error) {
-            console.error('Error generating embedding:', error);
-            throw new Error('error creating context data')
+        if (!api) {
+            throw new Error("unable to find api key")
         }
 
+        api_key = api?.api_key
+
+        if (api_key != "") {
+
+            const context_file = await File.create({
+                file_name: createFileDto.file_name,
+                slug: createFileDto.slug,
+                user_id: req.user.sub,
+            })
+
+            const parentDoc = await pdf(file.buffer)
+            console.log(parentDoc)
+
+
+            const subDocs = this.splitTextIntoChunks(parentDoc.text, 1000, 20);
+
+            console.log(subDocs)
+            const embeddings = new OpenAIEmbeddings({
+                apiKey: api_key,
+                model: process.env.OPEN_AI_EMBEDDING_MODEL,
+                dimensions: 1536
+            });
+
+            try {
+                const promises = subDocs.map(({ data }) => {
+                    return embeddings.embedQuery(data)
+                        .then(embedded_data => {
+                            console.log("This is embedded data", embedded_data);
+                            return ContextData.create({
+                                text_chunk: data,
+                                embedded_chunk: `{${embedded_data}}`,
+                                file_id: context_file.id,
+                            });
+                        })
+                        .then(result => {
+                            console.log("Result:", result);
+                        })
+                        .catch(err => {
+                            console.error("Error creating context data:", err);
+                            throw new Error("error creating embeddings > error creating context data")
+                        });
+                });
+                // Wait for all promises to complete
+                await Promise.all(promises);
+
+                return {
+                    statusCode: 200,
+                    message: "Success creating context data"
+                };
+            } catch (error) {
+                console.error('Error generating embedding:', error);
+                throw new Error('error creating context data')
+            }
+        }
     }
 
 

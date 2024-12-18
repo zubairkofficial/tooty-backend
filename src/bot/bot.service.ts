@@ -1,7 +1,7 @@
 import { Logger } from "@nestjs/common";
-import { CreateBotDto, DeleteBotDto, QueryBot } from "./dto/create-bot.dto";
+import { CreateBotDto, DeleteBotDto, GetBotDto, QueryBot, UpdateBotDto } from "./dto/create-bot.dto";
 import { Bot } from "./entities/bot.entity";
-import { CreateBotContextDto } from "./dto/create-Join-bot-data.dto";
+import { CreateBotContextDto, GetBotContextDto, UpdateBotContextDto } from "./dto/create-Join-bot-data.dto";
 import { Join_BotContextData } from "./entities/join_botContextData.entity";
 import { ContextData } from "src/context_data/entities/contextData.entity";
 import { OpenAIEmbeddings, OpenAI, DallEAPIWrapper } from "@langchain/openai";
@@ -244,7 +244,7 @@ export class BotService {
                 const answer = await chain.invoke({
                     text: similar_data,
                     query: queryBot.query,
-                    grade: bot?.level,
+                    grade: bot?.level.toLowerCase(),
                     subject: bot?.name
                 });
 
@@ -330,6 +330,34 @@ export class BotService {
         const magnitudeVec2 = Math.sqrt(vec2.reduce((sum, value) => sum + value * value, 0));
         return dotProduct / (magnitudeVec1 * magnitudeVec2);
     }
+
+
+
+    async updateBot(updateBotDto: UpdateBotDto, req: any) {
+        try {
+            await Bot.update({
+                name: updateBotDto.name,
+                description: updateBotDto.description,
+                ai_model: updateBotDto.ai_model,
+                level: updateBotDto.level.toLowerCase(),
+                user_id: req.user.sub,
+                display_name: updateBotDto.display_name
+            }, {
+                where: {
+                    id: {
+                        [Op.eq]: updateBotDto.id
+                    }
+                }
+            })
+            return {
+                statusCode: 200,
+                message: "bot updated successfully"
+            }
+        } catch (error) {
+            throw new Error("Error updating bot in DB")
+        }
+    }
+
     async createBot(createBotDto: CreateBotDto, req: any) {
         console.log(createBotDto)
 
@@ -339,8 +367,9 @@ export class BotService {
                 name: createBotDto.name,
                 description: createBotDto.description,
                 ai_model: createBotDto.ai_model,
-                level: createBotDto.level,
-                user_id: req.user.sub
+                level: createBotDto.level.toLowerCase(),
+                user_id: req.user.sub,
+                display_name: createBotDto.display_name
             }).then(async (bot) => {
                 await Join_BotContextData.create({
                     bot_id: bot.id,
@@ -358,10 +387,22 @@ export class BotService {
 
     async deleteBot(deleteBotDto: DeleteBotDto) {
         try {
-            await Bot.destroy({
+
+            await Join_BotContextData.destroy({
                 where: {
-                    id: deleteBotDto.id
+                    bot_id: {
+                        [Op.eq]: deleteBotDto.bot_id
+                    },
+                    file_id: {
+                        [Op.eq]: deleteBotDto.file_id
+                    },
                 }
+            }).then(async () => {
+                await Bot.destroy({
+                    where: {
+                        id: deleteBotDto.bot_id
+                    }
+                })
             })
 
             return {
@@ -374,26 +415,68 @@ export class BotService {
     }
 
 
-    async joinBot_ContextData(createJoinBot_Context: CreateBotContextDto) {
+
+    async getBotContextDto(getBotContextDto: GetBotContextDto) {
         try {
-
-            createJoinBot_Context.context_data_id.forEach(async (context_data_id) => {
-
-                await Join_BotContextData.create({
-                    bot_id: createJoinBot_Context.bot_id,
-                    context_data_id: context_data_id
-                })
-
-            });
-
+            const data = await Join_BotContextData.findOne({
+                where: {
+                    bot_id: {
+                        [Op.eq]: getBotContextDto.bot_id
+                    },
+                }
+            })
             return {
                 statusCode: 200,
-                message: "bot_contextData created successfully"
+                data: data,
+
             }
         } catch (error) {
-            throw new Error("Error creating bot_contextData in DB")
+            throw new Error("Error getting bot_contextData in DB")
         }
     }
+
+
+
+    // async createJoinBot_ContextData(createBotContextDto: CreateBotContextDto) {
+    //     try {
+    //         await Join_BotContextData.create({
+    //             bot_id: createBotContextDto.bot_id,
+    //             file_id: createBotContextDto.file_id
+    //         })
+    //         return {
+    //             statusCode: 200,
+    //             message: "bot_contextData created successfully"
+    //         }
+    //     } catch (error) {
+    //         throw new Error("Error created bot_contextData in DB")
+    //     }
+    // }
+
+
+    async updateJoinBot_ContextData(updateJoinBot_Context: UpdateBotContextDto) {
+        try {
+
+                await Join_BotContextData.update({
+                    bot_id: updateJoinBot_Context.bot_id,
+                    file_id: updateJoinBot_Context.file_id
+                }, {
+                    where: {
+                        bot_id: {
+                            [Op.eq]: updateJoinBot_Context.bot_id
+                        },
+
+                    }
+                })
+                return {
+                    statusCode: 200,
+                    message: "bot_contextData updated successfully"
+                }
+        } catch (error) {
+            throw new Error("Error updating bot_contextData in DB")
+        }
+    }
+
+
 
     async getBotsByLevel(req: any) {
         console.log("user in bot by level", req.user)
@@ -402,7 +485,7 @@ export class BotService {
             const bots = await Bot.findAll({
                 where: {
                     level: {
-                        [Op.eq]: req?.user.level
+                        [Op.eq]: req?.user.level.toLowerCase()
                     }
                 }
             });
@@ -438,5 +521,19 @@ export class BotService {
         }
     }
 
+
+
+    async getBot(getBotDto: GetBotDto) {
+        try {
+            const bot = await Bot.findByPk(getBotDto?.bot_id)
+
+            return {
+                statusCode: 200,
+                bot: bot
+            }
+        } catch (error) {
+            throw new Error("enable to get bot")
+        }
+    }
 
 }

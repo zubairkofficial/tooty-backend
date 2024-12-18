@@ -32,7 +32,8 @@ export class ProfileService {
     async updateProfile(updateProfileDto: UpdateProfileDto, req: any) {
         try {
             const update_profile = await Profile.update({
-                level: updateProfileDto.level,
+                level: updateProfileDto.level.toLowerCase(),
+                user_roll_no: updateProfileDto.user_roll_no
 
             }, {
                 where: {

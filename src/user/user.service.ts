@@ -307,7 +307,7 @@ export class UserService {
       throw new Error('Token expired or invalid');
     }
 
-    const payload = { sub: verifyToken?.sub, email: verifyToken.email, role: verifyToken?.role, level: verifyToken?.level ? verifyToken.level : "" };
+    const payload = { sub: verifyToken?.sub, email: verifyToken.email, role: verifyToken?.role, level: verifyToken?.level ? verifyToken.level.toLowerCase() : "" };
 
     console.log("payload in refresh access token", payload)
     const accessToken = SignAccessToken(payload);
@@ -369,7 +369,7 @@ export class UserService {
     })
 
     let refreshToken = ""
-    const payload = { sub: user.id, email: user.email, role: user?.role, level: profile?.level ? profile.level : "" };
+    const payload = { sub: user.id, email: user.email, role: user?.role, level: profile?.level ? profile.level.toLowerCase() : "" };
     if (refresh_token_exist) {
       refreshToken = refresh_token_exist?.refresh_token
       console.log("using old refresh key")
@@ -398,7 +398,8 @@ export class UserService {
           email: user.email,
           role: user.role,
           isVerified: user.isVerified,
-          level: profile?.level ? profile.level : ""
+          level: profile?.level ? profile.level.toLowerCase() : "",
+          user_roll_no: profile?.user_roll_no ? profile.user_roll_no : ""
         },
       },
     };

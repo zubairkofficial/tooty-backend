@@ -31,6 +31,11 @@ export class Bot extends Model {
     name: string;
 
     @Column({
+        type: DataType.STRING,
+    })
+    display_name: string;
+
+    @Column({
         type: DataType.TEXT,
     })
     description: string;
