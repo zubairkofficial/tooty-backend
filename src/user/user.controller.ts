@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Req, Get } from '@nestjs/common';
 import { UserService } from './user.service';
 import {
+  CreateUserByAdminDto,
   CreateUserDto,
   GetUserDto,
   RefreshAccessToken,
@@ -22,6 +23,23 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
 
+    // //where role is user
+    // @Post('get-teacher')
+    // @Roles(Role.ADMIN)
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    // async getStudent(@Body() getStudentDto: GetUserDto, @Req() req: any) {
+    //   return this.userService.getStudent(getStudentDto, req)
+    // }
+  
+    // //where role is user
+    // @Get('get-all-teachers')
+    // @Roles(Role.ADMIN)
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    // async getAllUser(@Req() req: any) {
+    //   return this.userService.getAllStudents(req)
+    // }
+    
+
   //where role is user
   @Post('get-student')
   @Roles(Role.ADMIN)
@@ -37,6 +55,16 @@ export class UserController {
   async getAllUser(@Req() req: any) {
     return this.userService.getAllStudents(req)
   }
+  
+  
+  // User Signup
+  @Post('create-user')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async createUser(@Body() createUserByAdminDto: CreateUserByAdminDto) {
+    return this.userService.createUser(createUserByAdminDto);
+  }
+
 
   // User Signup
   @Post('signup')

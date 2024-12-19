@@ -1,5 +1,6 @@
 import { UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
 import {
+  CreateUserByAdminDto,
   CreateUserDto,
   GetUserDto,
   RefreshAccessToken,
@@ -188,6 +189,47 @@ export class UserService {
     };
   }
 
+
+  async createUser(createUserByAdminDto: CreateUserByAdminDto) {
+    const existingUser = await User.findOne({
+      where: { email: createUserByAdminDto.email },
+    });
+    if (existingUser) {
+      return {
+        message: 'User Already Exist',
+        statusCode: 1000,
+        user: {
+          isVerified: existingUser.isVerified,
+        },
+      };
+    }
+    const hashedPassword = await bcrypt.hash(createUserByAdminDto.password != "" ? createUserByAdminDto.password : "123", 10);
+    const newUser = new User();
+    newUser.name = createUserByAdminDto.name;
+    newUser.email = createUserByAdminDto.email;
+    newUser.password = hashedPassword;
+    newUser.contact = createUserByAdminDto.contact;
+    newUser.role = createUserByAdminDto.role
+    newUser.isVerified = true
+    newUser.save().then(async (u) => {
+      await Profile.create({
+        level: "",
+        user_id: u.id,
+        user_roll_no: ""
+      })
+    });
+    return {
+      message: 'create user successfully registered.',
+      statusCode: HttpStatus.OK,
+      data: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+      },
+    };
+  }
+
+
   async signup(createUserDto: CreateUserDto) {
     console.log(createUserDto)
 
@@ -213,7 +255,8 @@ export class UserService {
     newUser.save().then(async (u) => {
       await Profile.create({
         level: "",
-        user_id: u.id
+        user_id: u.id,
+        user_roll_no: ""
       })
     });
     await this.sendOtpToEmail({ email: newUser.email });

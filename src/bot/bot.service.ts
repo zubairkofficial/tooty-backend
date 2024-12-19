@@ -181,6 +181,23 @@ export class BotService {
             if (api_key != "") {
 
 
+                const chatContext = await Chat.findAll({
+                    attributes: {
+                        include: ["message", "is_bot"]
+                    },
+                    where: {
+                        bot_id: {
+                            [Op.eq]: queryBot.bot_id
+                        },
+                        user_id: {
+                            [Op.eq]: req.user?.sub
+                        },
+                    },
+                    limit: Number(process?.env?.CONTEXT_MESSAGES_LIMIT) || 5,
+                    order: [['createdAt', 'DESC']],
+                })
+
+
                 const embeddings = new OpenAIEmbeddings({
                     apiKey: api_key,
                     model: process.env.OPEN_AI_EMBEDDING_MODEL,
@@ -204,40 +221,67 @@ export class BotService {
                 console.log(llm)
 
                 const promptTemplate = new PromptTemplate({
-                    inputVariables: ['text', 'query', 'grade', 'subject'],
+                    inputVariables: ['text', 'query', 'grade', 'subject', 'chatContext'],
                     template: `
-                        You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}. Your goal is to provide accurate, understandable, and grade-appropriate answers. Follow these detailed instructions:
+                        You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}. Your goal is to provide accurate, understandable, and grade-appropriate answers. Additionally, format your responses using HTML to enhance readability and presentation. Follow these detailed instructions:
+                        
+                        1. **Understanding Chat Context**:
+                            - You have access to the chat context, which includes the previous interactions between the user and you. Use this context to provide relevant, consistent, and coherent answers.
+                            - If the current query builds on a previous conversation, refer to the chat context to maintain continuity.
+                            - Always ensure that your answers align with the history of the conversation and avoid repeating information unless explicitly requested.
+                        
+                         2. **Formatting Responses**:
+                                 - Use \`<p>\` for paragraphs.
+                                   - Use \`<br>\` for line breaks where needed.
+                               - Use \`<b>\` or \`<strong>\` for emphasis.
+                              - Use \`<i>\` for italics when explaining concepts or terms.
+                              - Use \`<ul>\` and \`<li>\` for lists.
+                              - Use \`<sup>\` and \`<sub>\` for mathematical notations.
+                              - Use \`<pre>\` or \`<code>\` for code or mathematical derivations to make them stand out.
                 
-                        1. **Answering Questions Within {subject}**:
+                        3. **Answering Questions Within {subject}**:
                             - If the query is related to {text} or {subject}, answer it in a way that is easy for a grade {grade} student to understand.
                             - Even for advanced topics not typically taught in grade {grade}, simplify your explanation to make it accessible for the student's level.
+                        
+                        4. **Handling Questions on Related Subjects**:
+                            - If the query pertains to a related field (e.g., how Physics concepts apply to Chemistry):
+                                - Acknowledge the connection as it pertains to {subject}.
+                                - Focus on the {subject} aspects of the query without delving into unrelated details.
+                                - Provide an explanation that ties back to {subject} while maintaining the context of the user's question.
+                        
+                        5. **Adjusting Answer Length and Tone**:
+                            - For simple questions: Give a short, direct, and formatted answer.
+                            - For moderately detailed questions: Provide a concise explanation with essential details, formatted for clarity.
+                            - For complex questions: Offer a detailed explanation formatted with proper breaks and sections for better understanding.
                 
-                        2. **Adjusting Answer Length**:
-                            - For simple questions: Give a short, direct answer.
-                            - For moderately detailed questions: Provide a concise explanation with essential details.
-                            - For complex questions: Offer a simplified but thorough explanation suitable for a grade {grade} student.
-                
-                        3. **Handling Irrelevant Questions**:
-                            - If the query is unrelated to {subject}, politely respond:
-                              "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
-                            - Regardless of the query's relevance, always return the response in the following format:
-                              - **Answer**: "I am an expert in this subject" (if the query is irrelevant).
-                              - **shouldGenerateImage**: false (unless the query specifically asks for an image).
-                
-                        4. **Maintaining Clarity and Tone**:
+                        6. **Handling Irrelevant or Out-of-Scope Questions**:
+                            - If the query is unrelated to {subject} or cannot be answered within your expertise:
+                                - Politely inform the user that you are focused on {subject}.
+                                - Avoid answering the query inaccurately or going out of scope.
+                                - Example Response:
+                                    - **Answer**: "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
+                        
+                        7. **Maintaining Clarity and Consistency**:
                             - Use simple language and examples suitable for a grade {grade} student.
                             - Maintain a friendly, respectful, and encouraging tone.
-                
-                        5. **Response Format**:
-                            - Return a JSON object with two fields: \`answer\` and \`shouldGenerateImage\`.
-                            - If the answer requires illustrations, or if the query specifically asks for images/visuals/illustrations, set \`shouldGenerateImage\` to \`true\`.
-                            - Otherwise, set \`shouldGenerateImage\` to \`false\`.
-                
-                        Respond to the following query:
+                        
+                        8. **Response Format**:
+                            - Return a JSON object with two fields: \`message\` and \`shouldGenerateImage\`.
+                            - The \`message\` field should contain the HTML-formatted response.
+                            - The \`shouldGenerateImage\` field should be set to \`true\` if the answer requires illustrations or mathematical visuals, otherwise set it to \`false\`.
+                        
+                        9. **Using Chat Context**:
+                            - The variable \`chatContext\` contains the history of the user's interactions with you.
+                            - Refer to it whenever necessary to:
+                                - Avoid repeating answers.
+                                - Address follow-up questions with continuity.
+                                - Ensure a consistent flow of conversation.
+                            - If the query contradicts or updates earlier information, prioritize the current query while ensuring coherence with the chat history.
+                        
+                        Respond to the following query using the given chat context:
                         {query}
                     `,
                 });
-
 
 
                 const chain = promptTemplate.pipe(llm);
@@ -245,19 +289,23 @@ export class BotService {
                     text: similar_data,
                     query: queryBot.query,
                     grade: bot?.level.toLowerCase(),
-                    subject: bot?.name
+                    subject: bot?.name,
+                    chatContext: chatContext
                 });
 
                 console.log(answer)
 
-                const answerMatch = answer.match(/"answer":\s*"([^"]+)"/);
+                // const answerMatch = answer.match(/"answer":\s*"([^"]+)"/);
+                // const a = answerMatch ? answerMatch[1] : null;
+
+                const answerMatch = answer.match(/"message":\s*"([^"]+)"/);
                 const a = answerMatch ? answerMatch[1] : null;
 
                 // Extract the "shouldGenerateImage" value using regular expression
                 const shouldGenerateImageMatch = answer.match(/"shouldGenerateImage":\s*(true|false)/);
 
                 const b = shouldGenerateImageMatch ? shouldGenerateImageMatch[1] === 'true' : null; // Extracted boolean value
-                console.log("strigify answer", a, typeof a)
+                console.log("strigify answer", JSON.stringify(a), typeof a)
 
                 console.log("answer", b, typeof b)
 
@@ -456,21 +504,21 @@ export class BotService {
     async updateJoinBot_ContextData(updateJoinBot_Context: UpdateBotContextDto) {
         try {
 
-                await Join_BotContextData.update({
-                    bot_id: updateJoinBot_Context.bot_id,
-                    file_id: updateJoinBot_Context.file_id
-                }, {
-                    where: {
-                        bot_id: {
-                            [Op.eq]: updateJoinBot_Context.bot_id
-                        },
+            await Join_BotContextData.update({
+                bot_id: updateJoinBot_Context.bot_id,
+                file_id: updateJoinBot_Context.file_id
+            }, {
+                where: {
+                    bot_id: {
+                        [Op.eq]: updateJoinBot_Context.bot_id
+                    },
 
-                    }
-                })
-                return {
-                    statusCode: 200,
-                    message: "bot_contextData updated successfully"
                 }
+            })
+            return {
+                statusCode: 200,
+                message: "bot_contextData updated successfully"
+            }
         } catch (error) {
             throw new Error("Error updating bot_contextData in DB")
         }
