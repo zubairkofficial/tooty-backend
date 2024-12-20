@@ -15,7 +15,7 @@ export class ChatController {
 
     //fetch chats against bot_id and user_id
     @Post('/fetch-chat')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
 
     fetchChat(@Body() fetchChatDto: FetchChatDto, @Req() req: any) {
@@ -24,7 +24,7 @@ export class ChatController {
 
     // it will create message and reply against a session
     @Post('/create-message')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     sendMessage(@Body() createChatDto: CreateChatDto, @Req() req: any) {
         return this.chatSerivce.sendMessage(createChatDto, req);

@@ -14,14 +14,14 @@ export class BotController {
     constructor(private readonly botService: BotService) { }
 
     @Post('generate-image')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async generateImage(@Body() generateImageDto: GenerateImageDto, @Req() req: any) {
         return this.botService.generateImage(generateImageDto, req)
     }
 
     @Post('query-bot')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async queryBot(@Body() queryBot: QueryBot, @Req() req: any) {
         return this.botService.queryBot(queryBot, req)
