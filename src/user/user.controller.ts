@@ -23,40 +23,30 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
 
-    // //where role is user
-    // @Post('get-teacher')
-    // @Roles(Role.ADMIN)
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    // async getStudent(@Body() getStudentDto: GetUserDto, @Req() req: any) {
-    //   return this.userService.getStudent(getStudentDto, req)
-    // }
-  
-    // //where role is user
-    // @Get('get-all-teachers')
-    // @Roles(Role.ADMIN)
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    // async getAllUser(@Req() req: any) {
-    //   return this.userService.getAllStudents(req)
-    // }
-    
-
-  //where role is user
-  @Post('get-student')
+  @Post('get-user')
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async getStudent(@Body() getStudentDto: GetUserDto, @Req() req: any) {
-    return this.userService.getStudent(getStudentDto, req)
+  async getUser(@Body() getUserDto: GetUserDto, @Req() req: any) {
+    return this.userService.getUser(getUserDto, req)
+  }
+ 
+  //where role is user
+  @Get('get-all-teachers')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async getAllTeachers(@Req() req: any) {
+    return this.userService.getAllUsersByRole(Role.TEACHER,req)
   }
 
   //where role is user
   @Get('get-all-students')
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async getAllUser(@Req() req: any) {
-    return this.userService.getAllStudents(req)
+  async getAllStudents(@Req() req: any) {
+    return this.userService.getAllUsersByRole(Role.USER, req)
   }
-  
-  
+
+
   // User Signup
   @Post('create-user')
   @Roles(Role.ADMIN)

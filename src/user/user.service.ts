@@ -449,7 +449,7 @@ export class UserService {
   }
 
 
-  async getAllStudents(req: any) {
+  async getAllUsersByRole(role: Role, req: any) {
     try {
       const students = await User.findAll({
         attributes: {
@@ -458,7 +458,7 @@ export class UserService {
         where: {
 
           role: {
-            [Op.eq]: Role.USER
+            [Op.eq]: role
           }
         },
 
@@ -466,7 +466,7 @@ export class UserService {
 
       return {
         statusCode: 200,
-        students: students
+        users: students
       }
 
     } catch (error) {
@@ -474,7 +474,7 @@ export class UserService {
     }
   }
 
-  async getStudent(getStudentDto: GetUserDto, req: any) {
+  async getUser(getStudentDto: GetUserDto, req: any) {
     try {
       const student = await User.findByPk(getStudentDto.user_id, {
         attributes: {
@@ -491,4 +491,5 @@ export class UserService {
       throw new Error("Error fetching students")
     }
   }
+
 }

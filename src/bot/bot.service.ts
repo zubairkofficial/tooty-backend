@@ -284,13 +284,20 @@ export class BotService {
                 });
 
 
+                const pre_messages = chatContext.map((chat) => ({
+                    message: chat?.message,
+                    isBot: chat?.is_bot
+                }
+
+
+                ))
                 const chain = promptTemplate.pipe(llm);
                 const answer = await chain.invoke({
                     text: similar_data,
                     query: queryBot.query,
                     grade: bot?.level.toLowerCase(),
                     subject: bot?.name,
-                    chatContext: chatContext
+                    chatContext: pre_messages
                 });
 
                 console.log(answer)
