@@ -1,9 +1,8 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class GetBotByLevelDto {
 
-    @IsString()
-    @IsNotEmpty()
-    level: string
+    @IsNumber()
+    level_id: number
 
 }

@@ -46,9 +46,14 @@ export class Bot extends Model {
     ai_model: string;
 
     @Column({
-        type: DataType.STRING,
+        type: DataType.INTEGER,
     })
-    level: string;
+    level_id: number;
+
+    @Column({
+        type: DataType.INTEGER,
+    })
+    subject_id: number;
 
     @ForeignKey(() => User)
     @Column({

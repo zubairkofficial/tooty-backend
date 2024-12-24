@@ -1,11 +1,10 @@
 import { IsDate, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-export class UpdateProfileDto {
+export class UpdateStudentProfileDto {
 
 
-    @IsString({ message: 'level should be string' })
-    @IsNotEmpty({ message: 'level should not be empty' })
-    level: string;
+    @IsNumber()
+    level_id: number;
 
     @IsString({ message: 'level should be string' })
     @IsNotEmpty({ message: 'level should not be empty' })

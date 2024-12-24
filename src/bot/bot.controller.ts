@@ -51,12 +51,12 @@ export class BotController {
     }
 
 
-    // @Post('create-join-bot-context')
-    // @Roles(Role.ADMIN)
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    // async createJoinBotContext(@Body() createBotContextDto: CreateBotContextDto, @Req() req: any) {
-    //     return this.botService.createJoinBot_ContextData(createBotContextDto)
-    // }
+    @Post('create-join-bot-context')
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    async createJoinBotContext(@Body() createBotContextDto: CreateBotContextDto, @Req() req: any) {
+        return this.botService.createJoinBot_ContextData(createBotContextDto)
+    }
 
 
 
@@ -83,11 +83,18 @@ export class BotController {
         return this.botService.getBot(getBotDto)
     }
 
+    
+    @Get('get-all-bots-by-teacher')
+    @Roles(Role.TEACHER)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    async getBotsByTeacher( @Req() req: any) {
+        return this.botService.getAllBotsByTeacher(req)
+    }
 
     @Get('get-all-bots-by-admin')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    async getAllBots(@Req() req: any) {
+    async getAllBotsByAdmin(@Req() req: any) {
         return this.botService.getAllBotsByAdmin(req)
     }
 

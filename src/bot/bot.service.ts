@@ -19,6 +19,9 @@ import { Op } from "sequelize";
 import { GetBotByLevelDto } from "./dto/get-bot-by-level.dto";
 import { API } from "src/api/entities/api.entity";
 import { ApiService } from "src/api/api.service";
+import { Level } from "src/level/entity/level.entity";
+import { JoinTeacherSubjectLevel } from "src/profile/entities/join-teacher-subject-level.entity";
+import { TeacherProfile } from "src/profile/entities/teacher-profile.entity";
 
 export class BotService {
 
@@ -160,7 +163,18 @@ export class BotService {
                 throw new Error("No bot with this id exist")
             }
 
+            const bot_files = await Join_BotContextData.findAll({
+                attributes: ["file_id"],
+                where: {
+                    bot_id: {
+                        [Op.eq]: bot.id
+                    }
+                }
+            })
 
+            if (bot_files.length == 0) {
+                throw new Error("no files are attached")
+            }
 
             const api = await API.findOne({
                 where: {
@@ -205,7 +219,7 @@ export class BotService {
                 });
                 const embeddedQuery = await embeddings.embedQuery(queryBot.query)
                 console.log(queryBot.query, embeddedQuery)
-                const similar_data = await this.performSimilaritySearch(embeddedQuery)
+                const similar_data = await this.performSimilaritySearch(embeddedQuery, bot_files)
 
 
 
@@ -290,13 +304,17 @@ export class BotService {
                 }
 
 
+
+
+
                 ))
+                const level_data = await Level.findByPk(bot.level_id)
                 const chain = promptTemplate.pipe(llm);
                 const answer = await chain.invoke({
                     text: similar_data,
                     query: queryBot.query,
-                    grade: bot?.level.toLowerCase(),
-                    subject: bot?.name,
+                    grade: level_data?.level.toLowerCase(),
+                    subject: bot?.name.toLowerCase(),
                     chatContext: pre_messages
                 });
 
@@ -345,9 +363,14 @@ export class BotService {
 
 
 
-    async performSimilaritySearch(queryVector: number[]) {
+    async performSimilaritySearch(queryVector: number[], bot_files: any[]) {
         const contextDataRecords = await ContextData.findAll({
             attributes: ['id', 'text_chunk', 'embedded_chunk'],
+            where: {
+                file_id: {
+                    [Op.in]: bot_files.map(({ file_id }) => (file_id))
+                }
+            }
         });
 
         const similarities = contextDataRecords.map((record) => {
@@ -394,7 +417,7 @@ export class BotService {
                 name: updateBotDto.name,
                 description: updateBotDto.description,
                 ai_model: updateBotDto.ai_model,
-                level: updateBotDto.level.toLowerCase(),
+                level_id: updateBotDto.level_id,
                 user_id: req.user.sub,
                 display_name: updateBotDto.display_name
             }, {
@@ -422,8 +445,9 @@ export class BotService {
                 name: createBotDto.name,
                 description: createBotDto.description,
                 ai_model: createBotDto.ai_model,
-                level: createBotDto.level.toLowerCase(),
+                level_id: createBotDto.level_id,
                 user_id: req.user.sub,
+                subject: createBotDto.subject.toLowerCase(),
                 display_name: createBotDto.display_name
             }).then(async (bot) => {
                 await Join_BotContextData.create({
@@ -492,20 +516,20 @@ export class BotService {
 
 
 
-    // async createJoinBot_ContextData(createBotContextDto: CreateBotContextDto) {
-    //     try {
-    //         await Join_BotContextData.create({
-    //             bot_id: createBotContextDto.bot_id,
-    //             file_id: createBotContextDto.file_id
-    //         })
-    //         return {
-    //             statusCode: 200,
-    //             message: "bot_contextData created successfully"
-    //         }
-    //     } catch (error) {
-    //         throw new Error("Error created bot_contextData in DB")
-    //     }
-    // }
+    async createJoinBot_ContextData(createBotContextDto: CreateBotContextDto) {
+        try {
+            await Join_BotContextData.create({
+                bot_id: createBotContextDto.bot_id,
+                file_id: createBotContextDto.file_id
+            })
+            return {
+                statusCode: 200,
+                message: "bot_contextData created successfully"
+            }
+        } catch (error) {
+            throw new Error("Error created bot_contextData in DB")
+        }
+    }
 
 
     async updateJoinBot_ContextData(updateJoinBot_Context: UpdateBotContextDto) {
@@ -539,8 +563,8 @@ export class BotService {
             // Fetch all bots with level
             const bots = await Bot.findAll({
                 where: {
-                    level: {
-                        [Op.eq]: req?.user.level.toLowerCase()
+                    level_id: {
+                        [Op.eq]: req?.user.level_id
                     }
                 }
             });
@@ -550,6 +574,58 @@ export class BotService {
                 message: "Bots fetched successfully",
                 bots: bots, // Include the fetched bots in the response
             };
+        } catch (error) {
+            this.logger.error("Error fetching bots: ", error.message);
+            throw new Error("Error fetching bots from the database");
+        }
+    }
+
+    async getAllBotsByTeacher(req: any) {
+        try {
+
+            const teacher_profile = await TeacherProfile.findOne({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
+
+            if (teacher_profile) {
+                const teacher_data = await JoinTeacherSubjectLevel.findAll({
+                    where: {
+                        teacher_id: {
+                            [Op.eq]: teacher_profile.id
+                        }
+                    }
+                })
+
+                if (teacher_data.length > 0) {
+                    const bots = await Bot.findAll({
+                        where: {
+                            [Op.or]: teacher_data.map(({ subject_id, level_id }) => ({
+                                [Op.and]: [
+                                    {
+                                        subject_id: {
+                                            [Op.eq]: subject_id
+                                        }
+                                    },
+                                    {
+                                        level_id: {
+                                            [Op.eq]: level_id
+                                        }
+                                    }
+                                ]
+                            }))
+                        }
+                    })
+                    return {
+                        statusCode: 200,
+                        data: bots
+                    }
+                }
+            }
+
         } catch (error) {
             this.logger.error("Error fetching bots: ", error.message);
             throw new Error("Error fetching bots from the database");

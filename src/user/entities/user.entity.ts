@@ -12,9 +12,10 @@ import { RefreshToken } from './refreshToken.entity';
 // import { Bot } from '../../bot/entities/bot.entity';
 import { File } from 'src/context_data/entities/file.entity';
 import { Role } from 'src/utils/roles.enum';
-import { Profile } from 'src/profile/entities/profile.entity';
+import { StudentProfile } from 'src/profile/entities/student-profile.entity';
 import { API } from 'src/api/entities/api.entity';
 import { Bot } from 'src/bot/entities/bot.entity';
+import { TeacherProfile } from 'src/profile/entities/teacher-profile.entity';
 
 @Table({
   tableName: 'users',
@@ -65,8 +66,11 @@ export class User extends Model {
   @HasOne(() => RefreshToken)
   refresh_token!: RefreshToken;
 
-  @HasOne(() => Profile)
-  profile!: Profile;
+  @HasOne(() => StudentProfile)
+  student_profile: StudentProfile;
+
+  @HasOne(() => TeacherProfile)
+  teacher_profile: TeacherProfile
 
   @HasMany(() => API)
   api!: API

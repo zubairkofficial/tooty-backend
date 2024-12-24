@@ -18,9 +18,13 @@ export class CreateBotDto {
     @IsNotEmpty({ message: 'aimodel should not be empty' })
     ai_model: string;
 
+    @IsNumber()
+    level_id: number;
+
+
     @IsString()
-    @IsNotEmpty({ message: 'level should not be empty' })
-    level: string;
+    @IsNotEmpty()
+    subject: string
 
     @IsNumber()
     file_id: number;
@@ -48,9 +52,12 @@ export class UpdateBotDto {
     @IsNotEmpty({ message: 'aimodel should not be empty' })
     ai_model: string;
 
+    @IsNumber()
+    level_id: number;
+
     @IsString()
-    @IsNotEmpty({ message: 'level should not be empty' })
-    level: string;
+    @IsNotEmpty()
+    subject: string
 }
 
 export class DeleteBotDto {
@@ -67,10 +74,8 @@ export class QueryBot {
     @IsNotEmpty()
     query: string;
 
-
     @IsNumber()
     bot_id: number
-
 }
 
 export class GetBotDto {

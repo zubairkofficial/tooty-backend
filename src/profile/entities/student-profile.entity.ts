@@ -3,31 +3,29 @@ import {
     Column,
     DataType,
     ForeignKey,
+    HasOne,
     Model,
     PrimaryKey,
     Table,
     Unique,
 } from 'sequelize-typescript';
+import { Level } from 'src/level/entity/level.entity';
 import { User } from 'src/user/entities/user.entity';
 
 
 @Table({
-    tableName: 'profile',
+    tableName: 'student-profile',
     timestamps: true,
     paranoid: true
 })
-export class Profile extends Model {
+export class StudentProfile extends Model {
     @PrimaryKey
     @Column({
         autoIncrement: true,
         type: DataType.INTEGER,
     })
-    id: number; //it must be equal to the id in User table
+    id: number; 
 
-    @Column({
-        type: DataType.STRING,
-    })
-    level: string;
 
     @Column({
         type: DataType.STRING,
@@ -35,29 +33,17 @@ export class Profile extends Model {
     user_roll_no: string;
 
 
-
-    // @Column({
-    //     type: DataType.STRING,
-    // })
-    // gender: string;
-
-    // @Column({
-    //     type: DataType.STRING,
-    // })
-    // institute: string;
-
-    // @Column({
-    //     type: DataType.STRING,
-    // })
-    // address: string;
-
-    // @Column({
-    //     type: DataType.DATE,
-    // })
-    // dob: Date;
+    @ForeignKey(() => Level)
+    @Column({
+        type: DataType.INTEGER,
+    })
+    level_id: number;
 
 
-    // @Unique
+    @HasOne(() => Level)
+    level!: Level
+
+
     @ForeignKey(() => User)
     @Column({
         type: DataType.INTEGER

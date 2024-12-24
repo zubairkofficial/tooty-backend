@@ -9,7 +9,7 @@ export const VerifyRefreshToken = (token: string): any => {
         return err.name
       }
 
-      return { sub: null, email: '', level: '', role: "" };
+      return { sub: null, email: '', level_id: null, role: "" };
     }
     console.log("user in token", user)
     return user
@@ -25,7 +25,7 @@ export const VerifyAccessToken = (token: string): any => {
         return err.name
       }
 
-      return { sub: null, email: '', level: '', role: "" };
+      return { sub: null, email: '', level_id: null, role: "" };
     }
 
     return user

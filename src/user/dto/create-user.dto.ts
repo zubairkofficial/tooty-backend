@@ -38,7 +38,6 @@ export class CreateUserByAdminDto {
   @IsString()
   @IsNotEmpty()
   role: Role;
-
 }
 
 export class UserLoginDto {

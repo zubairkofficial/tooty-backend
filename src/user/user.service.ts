@@ -22,10 +22,10 @@ import { RefreshToken } from './entities/refreshToken.entity';
 import { VerifyRefreshToken } from 'src/utils/verifyToken.utils';
 import { Role } from 'src/utils/roles.enum';
 
-import { Transaction } from 'sequelize';
-import { Profile } from 'src/profile/entities/profile.entity';
+import { StudentProfile } from 'src/profile/entities/student-profile.entity';
 import { Op } from 'sequelize';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { TeacherProfile } from 'src/profile/entities/teacher-profile.entity';
 
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
@@ -212,11 +212,19 @@ export class UserService {
     newUser.role = createUserByAdminDto.role
     newUser.isVerified = true
     newUser.save().then(async (u) => {
-      await Profile.create({
-        level: "",
-        user_id: u.id,
-        user_roll_no: ""
-      })
+      if (createUserByAdminDto.role == Role.USER) {
+        await StudentProfile.create({
+          level_id: null,
+          user_id: u.id,
+          user_roll_no: ""
+        })
+      } else if (createUserByAdminDto.role == Role.TEACHER) {
+        await TeacherProfile.create({
+          user_id: u.id,
+          id: u.id,
+          title: ""
+        })
+      }
     });
     return {
       message: 'create user successfully registered.',
@@ -253,8 +261,8 @@ export class UserService {
     newUser.contact = createUserDto.contact;
     newUser.role = Role.USER
     newUser.save().then(async (u) => {
-      await Profile.create({
-        level: "",
+      await StudentProfile.create({
+        level_id: null,
         user_id: u.id,
         user_roll_no: ""
       })
@@ -316,7 +324,7 @@ export class UserService {
   async generateRefreshToken(payload: {
     sub: number;
     email: string;
-    level: string;
+    level_id: number | null;
     role: string
   }): Promise<string> {
     const refreshToken = SignRefreshToken(payload);
@@ -350,7 +358,7 @@ export class UserService {
       throw new Error('Token expired or invalid');
     }
 
-    const payload = { sub: verifyToken?.sub, email: verifyToken.email, role: verifyToken?.role, level: verifyToken?.level ? verifyToken.level.toLowerCase() : "" };
+    const payload = { sub: verifyToken?.sub, email: verifyToken.email, role: verifyToken?.role, level_id: verifyToken?.level_id ? verifyToken.level_id : null };
 
     console.log("payload in refresh access token", payload)
     const accessToken = SignAccessToken(payload);
@@ -387,13 +395,25 @@ export class UserService {
     if (!user) {
       throw new UnauthorizedException('No User exist');
     }
-    const profile = await Profile.findOne({
-      where: {
-        user_id: {
-          [Op.eq]: user.id
+
+    let profile: any;
+    if (user.role == Role.USER) {
+      profile = await StudentProfile.findOne({
+        where: {
+          user_id: {
+            [Op.eq]: user.id
+          }
         }
-      }
-    })
+      })
+    } else if (user.role == Role.TEACHER) {
+      profile = await TeacherProfile.findOne({
+        where: {
+          user_id: {
+            [Op.eq]: user.id
+          }
+        }
+      })
+    }
     this.logger.log(`USER in db , ${user}`);
 
     this.logger.log(`USER in db , ${user.password} \n ${password}`);
@@ -412,7 +432,7 @@ export class UserService {
     })
 
     let refreshToken = ""
-    const payload = { sub: user.id, email: user.email, role: user?.role, level: profile?.level ? profile.level.toLowerCase() : "" };
+    const payload = { sub: user.id, email: user.email, role: user?.role, level_id: profile?.level_id ? profile.level_id : null };
     if (refresh_token_exist) {
       refreshToken = refresh_token_exist?.refresh_token
       console.log("using old refresh key")
@@ -441,8 +461,8 @@ export class UserService {
           email: user.email,
           role: user.role,
           isVerified: user.isVerified,
-          level: profile?.level ? profile.level.toLowerCase() : "",
-          user_roll_no: profile?.user_roll_no ? profile.user_roll_no : ""
+          level_id: profile?.level_id ? profile.level_id : null,
+
         },
       },
     };
