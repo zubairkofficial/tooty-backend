@@ -75,8 +75,7 @@ export class DeleteBotDto {
     @IsNumber()
     bot_id: number
 
-    @IsNumber()
-    file_id: number
+    
 
 }
 

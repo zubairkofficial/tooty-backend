@@ -463,9 +463,6 @@ export class BotService {
                     bot_id: {
                         [Op.eq]: deleteBotDto.bot_id
                     },
-                    file_id: {
-                        [Op.eq]: deleteBotDto.file_id
-                    },
                 }
             }).then(async () => {
                 await Bot.destroy({
