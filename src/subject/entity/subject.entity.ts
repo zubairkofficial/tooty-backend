@@ -1,11 +1,16 @@
 import {
+    BelongsTo,
     Column,
     DataType,
+    ForeignKey,
+    HasOne,
     Model,
     PrimaryKey,
     Table,
     Unique,
 } from 'sequelize-typescript';
+import { Bot } from 'src/bot/entities/bot.entity';
+import { Level } from 'src/level/entity/level.entity';
 
 
 @Table({
@@ -36,4 +41,18 @@ export class Subject extends Model {
         type: DataType.TEXT
     })
     description: string
+
+    @ForeignKey(() => Level)
+    @Column({
+        type: DataType.INTEGER
+    })
+    level_id: number
+
+
+    @BelongsTo(() => Level)
+    level!: Level
+
+
+    @HasOne(() => Bot)
+    bot!: Bot
 }

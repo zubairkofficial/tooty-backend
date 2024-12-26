@@ -8,6 +8,7 @@ import {
     Table,
     Unique,
 } from 'sequelize-typescript';
+import { Level } from 'src/level/entity/level.entity';
 import { User } from 'src/user/entities/user.entity';
 
 
@@ -34,6 +35,12 @@ export class TeacherProfile extends Model {
     })
     user_id: number;
 
+
+    @ForeignKey(() => Level)
+    @Column({
+        type: DataType.INTEGER
+    })
+    level_id: number;
 
     @BelongsTo(() => User)
     user!: User

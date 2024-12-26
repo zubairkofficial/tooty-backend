@@ -1,11 +1,14 @@
 import {
     Column,
     DataType,
+    HasMany,
     Model,
     PrimaryKey,
     Table,
     Unique,
 } from 'sequelize-typescript';
+import { StudentProfile } from 'src/profile/entities/student-profile.entity';
+import { Subject } from 'src/subject/entity/subject.entity';
 
 
 @Table({
@@ -31,5 +34,11 @@ export class Level extends Model {
         type: DataType.TEXT,
     })
     description: string;
+
+    @HasMany(() => StudentProfile)
+    students!: StudentProfile
+
+    @HasMany(() => Subject)
+    subjects!: Subject
 
 }

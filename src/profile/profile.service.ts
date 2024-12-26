@@ -3,12 +3,76 @@ import { UpdateStudentProfileDto } from './dto/update-profile.dto';
 import { StudentProfile } from './entities/student-profile.entity';
 import { GetStudentProfileDto } from './dto/get-profile.dto';
 import { Op } from 'sequelize';
-import { CreateJoinTeacherSubjectLevel, DeleteJoinTeacherSubjectLevel, GetTeacherProfileDto, UpdateTeacherProfileDto } from './dto/teacher-profile.dto';
+import { CreateJoinTeacherSubjectLevel, DeleteJoinTeacherSubjectLevel, GetJoinsTeacherSubjectLevelDto, GetTeacherProfileDto, UpdateTeacherProfileDto } from './dto/teacher-profile.dto';
 import { TeacherProfile } from './entities/teacher-profile.entity';
 import { JoinTeacherSubjectLevel } from './entities/join-teacher-subject-level.entity';
+import { GetStudentsByLevelDto } from './dto/get-student.dto';
+import { UpdateAdminDto } from './dto/admin.dto';
+import { AdminProfile } from './entities/admin-profile.entity';
 
 
 export class ProfileService {
+
+    async getAdminProfile(req: any) {
+        try {
+            const admin_profile = await AdminProfile.findOne({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
+            return {
+                statusCode: 200,
+                data: admin_profile
+
+            }
+        } catch (error) {
+            throw new Error("failed to fetch admin profile")
+        }
+    }
+
+    async updateAdmin(updateAdminProfileDto: UpdateAdminDto, req: any) {
+
+        try {
+            const admin_profile_exist = await AdminProfile.findOne({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
+
+            if (!admin_profile_exist) {
+                await AdminProfile.create({
+                    openai: updateAdminProfileDto.openai,
+                    dalle: updateAdminProfileDto.dalle,
+                    deepgram: updateAdminProfileDto.deepgram,
+                    master_prompt: updateAdminProfileDto.master_prompt,
+                    user_id: req.user.sub
+                })
+            }
+            await AdminProfile.update({
+                openai: updateAdminProfileDto.openai,
+                dalle: updateAdminProfileDto.dalle,
+                deepgram: updateAdminProfileDto.deepgram,
+                master_prompt: updateAdminProfileDto.master_prompt
+            }, {
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            })
+            return {
+                statusCode: 200,
+                message: "admin updated successfully",
+
+            }
+        } catch (error) {
+            throw new Error("failed to update admin")
+        }
+    }
 
     //teacher management
     async deleteJoinTeacherSubjectLevel(deleteJoinTeacherSubjectLevelDto: DeleteJoinTeacherSubjectLevel, req: any) {
@@ -36,39 +100,72 @@ export class ProfileService {
         }
     }
 
+    async getJoinTeacherSubjectLevel(getJoinTeacherSubjectLevelDto: GetJoinsTeacherSubjectLevelDto, req: any) {
+        try {
+
+            const teacher_data = await TeacherProfile.findOne({
+                where: {
+                    user_id: {
+                        [Op.eq]: getJoinTeacherSubjectLevelDto.user_id
+                    }
+                }
+            }).then(async (teacher) => {
+                const data = await JoinTeacherSubjectLevel.findAll({
+                    where: {
+
+                        teacher_id: {
+                            [Op.eq]: teacher.id
+                        },
+                    }
+                })
+
+                return data
+
+            })
+            return {
+                statusCode: 200,
+                data: teacher_data
+            }
+        } catch (error) {
+            console.log(error)
+            throw new Error("failed to get teacher subject level join")
+        }
+    }
+
     async createJoinTeacherSubjectLevel(createJoinTeacherSubjectLevelDto: CreateJoinTeacherSubjectLevel, req: any) {
         try {
 
-            const join_already_exist = await JoinTeacherSubjectLevel.findOne({
-                where: {
-                    level_id: {
-                        [Op.eq]: createJoinTeacherSubjectLevelDto.level_id
-                    },
-                    subject_id: {
-                        [Op.eq]: createJoinTeacherSubjectLevelDto.subject_id
-                    },
-                    teacher_id: {
-                        [Op.eq]: createJoinTeacherSubjectLevelDto.teacher_id
-                    },
-                }
-            })
-
-            if (!join_already_exist) {
-                await JoinTeacherSubjectLevel.create({
-                    level_id: createJoinTeacherSubjectLevelDto.level_id,
-                    subject_id: createJoinTeacherSubjectLevelDto.subject_id,
-                    teacher_id: createJoinTeacherSubjectLevelDto.teacher_id
+            createJoinTeacherSubjectLevelDto.subject_id.forEach(async (id) => {
+                const join_already_exist = await JoinTeacherSubjectLevel.findOne({
+                    where: {
+                        level_id: {
+                            [Op.eq]: createJoinTeacherSubjectLevelDto.level_id
+                        },
+                        subject_id: {
+                            [Op.eq]: Number(id)
+                        },
+                        teacher_id: {
+                            [Op.eq]: createJoinTeacherSubjectLevelDto.teacher_id
+                        },
+                    }
                 })
 
-                return {
-                    statusCode: 200,
-                    message: "teacher level subject join created successfully",
+                if (!join_already_exist) {
+                    await JoinTeacherSubjectLevel.create({
+                        level_id: createJoinTeacherSubjectLevelDto.level_id,
+                        subject_id: Number(id),
+                        teacher_id: createJoinTeacherSubjectLevelDto.teacher_id
+                    })
 
                 }
-            } else {
-                throw new Error("Teacher level subject join already exist")
-            }
 
+            })
+
+            return {
+                statusCode: 200,
+                message: "teacher level subject join created successfully",
+
+            }
 
         } catch (error) {
             throw new Error("Error creating teacher level subject join")
@@ -99,7 +196,8 @@ export class ProfileService {
     async updateTeacherProfile(updateTeacherProfile: UpdateTeacherProfileDto, req: any) {
         try {
             const update_profile = await TeacherProfile.update({
-                title: updateTeacherProfile.title
+                title: updateTeacherProfile.title,
+                level_id: updateTeacherProfile.level_id
 
             }, {
                 where: {
@@ -141,6 +239,27 @@ export class ProfileService {
         } catch (error) {
             console.log(error)
             throw new Error('error getting profile')
+        }
+    }
+
+    async getStudentsByLevel(getStudentsByLevelDto: GetStudentsByLevelDto, req: any) {
+        try {
+
+
+            const students = await StudentProfile.findAll({
+                where: {
+                    level_id: {
+                        [Op.eq]: getStudentsByLevelDto.level_id
+                    }
+                }
+            })
+
+            return {
+                statusCode: 200,
+                data: students
+            }
+        } catch (error) {
+            throw new Error("Error getting students by level")
         }
     }
 

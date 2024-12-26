@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { API } from "./entities/api.entity";
 import { UpdateApiKeyDto } from "./dto/update-api.dto";
+import { AdminProfile } from "src/profile/entities/admin-profile.entity";
 
 
 export class ApiService {
@@ -30,12 +31,8 @@ export class ApiService {
 
     async getDeepGramApi(req: any) {
         try {
-            const data = await API.findOne({
-                where: {
-                    api_name: {
-                        [Op.eq]: "deepgram"
-                    }
-                }
+            const data = await AdminProfile.findOne({
+                attributes: ["deepgram"]
             })
             return {
                 statusCode: 200,
@@ -48,7 +45,7 @@ export class ApiService {
 
     async getAllApiKeys(req: any) {
         try {
-            const data = await API.findAll({
+            const data = await AdminProfile.findAll({
                 where: {
                     user_id: {
                         [Op.eq]: req.user.sub
@@ -84,15 +81,41 @@ export class ApiService {
 
     async updateApiKey(updateApiKeyDto: UpdateApiKeyDto, req: any) {
         try {
-            await API.update({
-                api_key: updateApiKeyDto.api_key,
-            },
-                {
-                    where: {
-                        user_id: req.user.sub,
-                        id: updateApiKeyDto.id
-                    }
-                })
+            if (updateApiKeyDto.api_name == "openai") {
+                await AdminProfile.update({
+                    openai: updateApiKeyDto.api_key,
+                },
+                    {
+                        where: {
+                            user_id: req.user.sub,
+
+                        }
+                    })
+
+            }
+
+            if (updateApiKeyDto.api_name == "dalle") {
+                await AdminProfile.update({
+                    dalle: updateApiKeyDto.api_key,
+                },
+                    {
+                        where: {
+                            user_id: req.user.sub,
+
+                        }
+                    })
+            }
+            if (updateApiKeyDto.api_name == "deepgram") {
+                await AdminProfile.update({
+                    deepgram: updateApiKeyDto.api_key,
+                },
+                    {
+                        where: {
+                            user_id: req.user.sub,
+
+                        }
+                    })
+            }
             return {
                 statusCode: 200,
                 message: "api updated successfully"

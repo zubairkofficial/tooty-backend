@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class UpdateUserDto {
 
@@ -16,4 +16,8 @@ export class UpdateUserDto {
     @IsString()
     @IsNotEmpty()
     contact: string;
+
+    @IsBoolean()
+    isVerified: boolean
+
 }

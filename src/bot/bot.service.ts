@@ -1,7 +1,7 @@
 import { Logger } from "@nestjs/common";
-import { CreateBotDto, DeleteBotDto, GetBotDto, QueryBot, UpdateBotDto } from "./dto/create-bot.dto";
+import { CreateBotDto, DeleteBotDto, GetBotByLevelSubject, GetBotDto, QueryBot, UpdateBotDto } from "./dto/create-bot.dto";
 import { Bot } from "./entities/bot.entity";
-import { CreateBotContextDto, GetBotContextDto, UpdateBotContextDto } from "./dto/create-Join-bot-data.dto";
+import { CreateBotContextDto, DeleteBotContextDto, GetBotContextDto, UpdateBotContextDto } from "./dto/create-Join-bot-data.dto";
 import { Join_BotContextData } from "./entities/join_botContextData.entity";
 import { ContextData } from "src/context_data/entities/contextData.entity";
 import { OpenAIEmbeddings, OpenAI, DallEAPIWrapper } from "@langchain/openai";
@@ -22,6 +22,7 @@ import { ApiService } from "src/api/api.service";
 import { Level } from "src/level/entity/level.entity";
 import { JoinTeacherSubjectLevel } from "src/profile/entities/join-teacher-subject-level.entity";
 import { TeacherProfile } from "src/profile/entities/teacher-profile.entity";
+import { AdminProfile } from "src/profile/entities/admin-profile.entity";
 
 export class BotService {
 
@@ -44,12 +45,8 @@ export class BotService {
             }
 
 
-            const api = await API.findOne({
-                where: {
-                    api_name: {
-                        [Op.eq]: 'dalle'
-                    }
-                }
+            const api = await AdminProfile.findOne({
+                attributes: ["dalle"]
             })
 
 
@@ -59,7 +56,7 @@ export class BotService {
                 throw new Error("unable to find api key")
             }
 
-            api_key = api?.api_key
+            api_key = api?.dalle
 
             if (api_key != "") {
                 console.log(generateImageDto.answer)
@@ -176,12 +173,9 @@ export class BotService {
                 throw new Error("no files are attached")
             }
 
-            const api = await API.findOne({
-                where: {
-                    api_name: {
-                        [Op.eq]: 'open-ai'
-                    }
-                }
+            const api = await AdminProfile.findOne({
+                attributes: ["openai"]
+
             })
 
 
@@ -190,7 +184,7 @@ export class BotService {
                 throw new Error("unable to find api key")
             }
 
-            api_key = api?.api_key
+            api_key = api?.openai
 
             if (api_key != "") {
 
@@ -235,63 +229,55 @@ export class BotService {
                 console.log(llm)
 
                 const promptTemplate = new PromptTemplate({
-                    inputVariables: ['text', 'query', 'grade', 'subject', 'chatContext'],
+                    inputVariables: [
+                        'text',
+                        'query',
+                        'grade',
+                        'subject',
+                        'chatContext',
+                        'master_prompt',
+                        'bot_specific_prompt'
+                    ],
                     template: `
+                        {master_prompt}
+                
                         You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}. Your goal is to provide accurate, understandable, and grade-appropriate answers. Additionally, format your responses using HTML to enhance readability and presentation. Follow these detailed instructions:
-                        
-                        1. **Understanding Chat Context**:
-                            - You have access to the chat context, which includes the previous interactions between the user and you. Use this context to provide relevant, consistent, and coherent answers.
-                            - If the current query builds on a previous conversation, refer to the chat context to maintain continuity.
-                            - Always ensure that your answers align with the history of the conversation and avoid repeating information unless explicitly requested.
-                        
-                         2. **Formatting Responses**:
-                                 - Use \`<p>\` for paragraphs.
-                                   - Use \`<br>\` for line breaks where needed.
-                               - Use \`<b>\` or \`<strong>\` for emphasis.
-                              - Use \`<i>\` for italics when explaining concepts or terms.
-                              - Use \`<ul>\` and \`<li>\` for lists.
-                              - Use \`<sup>\` and \`<sub>\` for mathematical notations.
-                              - Use \`<pre>\` or \`<code>\` for code or mathematical derivations to make them stand out.
                 
-                        3. **Answering Questions Within {subject}**:
-                            - If the query is related to {text} or {subject}, answer it in a way that is easy for a grade {grade} student to understand.
-                            - Even for advanced topics not typically taught in grade {grade}, simplify your explanation to make it accessible for the student's level.
-                        
-                        4. **Handling Questions on Related Subjects**:
-                            - If the query pertains to a related field (e.g., how Physics concepts apply to Chemistry):
-                                - Acknowledge the connection as it pertains to {subject}.
-                                - Focus on the {subject} aspects of the query without delving into unrelated details.
-                                - Provide an explanation that ties back to {subject} while maintaining the context of the user's question.
-                        
-                        5. **Adjusting Answer Length and Tone**:
-                            - For simple questions: Give a short, direct, and formatted answer.
-                            - For moderately detailed questions: Provide a concise explanation with essential details, formatted for clarity.
-                            - For complex questions: Offer a detailed explanation formatted with proper breaks and sections for better understanding.
+                        {bot_specific_prompt}
                 
-                        6. **Handling Irrelevant or Out-of-Scope Questions**:
-                            - If the query is unrelated to {subject} or cannot be answered within your expertise:
-                                - Politely inform the user that you are focused on {subject}.
-                                - Avoid answering the query inaccurately or going out of scope.
-                                - Example Response:
-                                    - **Answer**: "I'm sorry, but I am trained to answer questions about {subject}. This topic is outside my area of expertise."
-                        
-                        7. **Maintaining Clarity and Consistency**:
-                            - Use simple language and examples suitable for a grade {grade} student.
-                            - Maintain a friendly, respectful, and encouraging tone.
-                        
-                        8. **Response Format**:
+                        IF you find about query in chatContext {chatContext} then do not go for {text}
+                         **Understanding Chat Context**:
+                            - You have access to the chat context, which includes the previous interactions between the user and you. Use this context to:
+                                - Provide relevant, consistent, and coherent answers based on the conversation's history.
+                                - Address follow-up questions by referring back to previous interactions when applicable.
+                                - Avoid repeating information unnecessarily unless explicitly requested by the user.
+                                - Maintain continuity in tone and content to ensure a seamless user experience.
+                                - Respond to queries about past interactions accurately, recalling specific details discussed previously.
+                                - If the current query revisits or builds on an earlier topic, acknowledge the connection and expand the explanation thoughtfully.
+                
+                         **Formatting Responses**:
+                            - Use \`<p>\` for paragraphs.
+                            - Use \`<br>\` for line breaks where needed.
+                            - Use \`<b>\` or \`<strong>\` for emphasis.
+                            - Use \`<i>\` for italics when explaining concepts or terms.
+                            - Use \`<ul>\` and \`<li>\` for lists.
+                            - Use \`<sup>\` and \`<sub>\` for mathematical notations.
+                            - Use \`<pre>\` or \`<code>\` for code or mathematical derivations to make them stand out.
+                
+                      
+                     **Response Format**:
                             - Return a JSON object with two fields: \`message\` and \`shouldGenerateImage\`.
                             - The \`message\` field should contain the HTML-formatted response.
-                            - The \`shouldGenerateImage\` field should be set to \`true\` if the answer requires illustrations or mathematical visuals, otherwise set it to \`false\`.
-                        
-                        9. **Using Chat Context**:
-                            - The variable \`chatContext\` contains the history of the user's interactions with you.
-                            - Refer to it whenever necessary to:
-                                - Avoid repeating answers.
-                                - Address follow-up questions with continuity.
-                                - Ensure a consistent flow of conversation.
-                            - If the query contradicts or updates earlier information, prioritize the current query while ensuring coherence with the chat history.
-                        
+                            - The \`shouldGenerateImage\` field should be set to \`true\` if the answer requires illustrations or mathematical visuals; otherwise, set it to \`false\`.
+                
+                     **Enhanced Chat Context Usage**:
+                            - Leverage the \`chatContext\` to ensure:
+                                - Continuity in follow-up discussions.
+                                - Accurate recall of previously discussed topics, ensuring the response is contextually relevant.
+                                - Tailored answers that build on prior exchanges, avoiding redundancy.
+                            - If a user requests clarification or revisits an earlier topic, provide an enriched explanation without losing alignment with prior responses.
+                            - When new information updates or contradicts prior interactions, prioritize the latest query while maintaining coherence with the conversation's flow.
+ 
                         Respond to the following query using the given chat context:
                         {query}
                     `,
@@ -315,7 +301,9 @@ export class BotService {
                     query: queryBot.query,
                     grade: level_data?.level.toLowerCase(),
                     subject: bot?.name.toLowerCase(),
-                    chatContext: pre_messages
+                    chatContext: pre_messages,
+                    bot_specific_prompt: bot?.description,
+                    master_prompt: ""
                 });
 
                 console.log(answer)
@@ -419,6 +407,7 @@ export class BotService {
                 ai_model: updateBotDto.ai_model,
                 level_id: updateBotDto.level_id,
                 user_id: req.user.sub,
+                subject_id: updateBotDto.subject_id,
                 display_name: updateBotDto.display_name
             }, {
                 where: {
@@ -436,7 +425,7 @@ export class BotService {
         }
     }
 
-    async createBot(createBotDto: CreateBotDto, req: any) {
+    async createBot(image: Express.Multer.File, createBotDto: CreateBotDto, req: any) {
         console.log(createBotDto)
 
         try {
@@ -445,14 +434,16 @@ export class BotService {
                 name: createBotDto.name,
                 description: createBotDto.description,
                 ai_model: createBotDto.ai_model,
-                level_id: createBotDto.level_id,
+                level_id: Number(createBotDto.level_id),
                 user_id: req.user.sub,
-                subject: createBotDto.subject.toLowerCase(),
+                bot_image_url: `${image.filename}`,
+                // first_message: createBotDto.first_message,
+                subject_id: Number(createBotDto.subject_id),
                 display_name: createBotDto.display_name
             }).then(async (bot) => {
                 await Join_BotContextData.create({
                     bot_id: bot.id,
-                    file_id: createBotDto.file_id
+                    file_id: Number(createBotDto.file_id)
                 })
             })
             return {
@@ -497,7 +488,7 @@ export class BotService {
 
     async getBotContextDto(getBotContextDto: GetBotContextDto) {
         try {
-            const data = await Join_BotContextData.findOne({
+            const data = await Join_BotContextData.findAll({
                 where: {
                     bot_id: {
                         [Op.eq]: getBotContextDto.bot_id
@@ -515,6 +506,29 @@ export class BotService {
     }
 
 
+    async deleteJoinBot_ContextData(deleteBotContextDto: DeleteBotContextDto,) {
+        try {
+            await Join_BotContextData.destroy({
+                where: {
+                    bot_id: {
+                        [Op.eq]: deleteBotContextDto.bot_id
+                    },
+                    file_id: {
+                        [Op.eq]: deleteBotContextDto.file_id
+                    },
+                }
+
+            })
+            return {
+                statusCode: 200,
+                message: "bot_contextData created successfully"
+            }
+
+
+        } catch (error) {
+            throw new Error("Error created bot_contextData in DB")
+        }
+    }
 
     async createJoinBot_ContextData(createBotContextDto: CreateBotContextDto) {
         try {
@@ -526,6 +540,8 @@ export class BotService {
                 statusCode: 200,
                 message: "bot_contextData created successfully"
             }
+
+
         } catch (error) {
             throw new Error("Error created bot_contextData in DB")
         }
@@ -664,6 +680,28 @@ export class BotService {
             }
         } catch (error) {
             throw new Error("enable to get bot")
+        }
+    }
+
+    async getBotByLevelSubject(getBotByLevelSubject: GetBotByLevelSubject) {
+        try {
+            const bot = await Bot.findOne({
+                where: {
+                    subject_id: {
+                        [Op.eq]: getBotByLevelSubject.subject_id
+                    },
+                    level_id: {
+                        [Op.eq]: getBotByLevelSubject.level_id
+                    },
+                }
+            })
+
+            return {
+                statusCode: 200,
+                bot: bot
+            }
+        } catch (error) {
+            throw new Error("enable to get bot by level subject ids")
         }
     }
 

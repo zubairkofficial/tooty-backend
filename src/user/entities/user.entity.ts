@@ -43,6 +43,12 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
+   
+  })
+  user_image_url: string;
+
+  @Column({
+    type: DataType.STRING,
   })
   contact: string;
 

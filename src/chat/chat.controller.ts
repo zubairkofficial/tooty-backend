@@ -3,7 +3,7 @@ import { Controller, Post, Body, UseGuards, Req, Get } from '@nestjs/common';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
-import { FetchChatDto } from './dto/fetch-chat.dto';
+import { FetchChatDto, FetchChatHistoryDto } from './dto/fetch-chat.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/utils/roles.enum';
 import { RolesGuard } from 'src/guards/roles.guard';
@@ -12,6 +12,16 @@ import { RolesGuard } from 'src/guards/roles.guard';
 @Controller('chat')
 export class ChatController {
     constructor(private readonly chatSerivce: ChatService) { }
+
+
+
+    @Post('/fetch-chat-history')
+    @Roles(Role.TEACHER, Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+
+    fetchChatHistory(@Body() fetchChatHistoryDto: FetchChatHistoryDto, @Req() req: any) {
+        return this.chatSerivce.fetchChatHistory(fetchChatHistoryDto, req)
+    }
 
     //fetch chats against bot_id and user_id
     @Post('/fetch-chat')

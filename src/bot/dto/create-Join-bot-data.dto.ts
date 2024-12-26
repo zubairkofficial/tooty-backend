@@ -1,5 +1,16 @@
 import { IsInt, IsNotEmpty, IsNumber, IsString } from "class-validator";
 
+export class DeleteBotContextDto {
+
+    @IsNumber()
+    bot_id: number;
+
+    @IsNumber()
+    file_id: number;
+
+
+}
+
 export class CreateBotContextDto {
 
     @IsNumber()
@@ -10,6 +21,7 @@ export class CreateBotContextDto {
 
 
 }
+
 
 export class UpdateBotContextDto {
 

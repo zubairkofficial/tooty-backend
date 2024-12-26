@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ContextDataService } from './contextData.service';
 import { CreateFileDto, DeleteFileDto } from './dto/create-contextData.dto';
@@ -16,17 +16,38 @@ export class ContextDataController {
     @Post('upload')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @UseInterceptors(
-        FileInterceptor('file'),
-    )
-    async processFile(@UploadedFile() file: Express.Multer.File, @Body() createFileDto: CreateFileDto, @Req() req: any) {
+    @UseInterceptors(FileInterceptor('file'))
+    async processFile(
+        @UploadedFile() file: Express.Multer.File,
+        @Body() createFileDto: CreateFileDto,
+        @Req() req: any,
+        @Res() res: any,
+    ) {
         if (!file) {
             return { message: 'No file uploaded.' };
         }
 
-        return this.contextDataService.processFile(file, createFileDto, req)
+        // Set headers for SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
 
+        try {
+            await this.contextDataService.processFile(file, createFileDto, req, (progress: number) => {
+                // Send progress updates
+                res.write(`data: ${JSON.stringify({ progress })}\n\n`);
+            });
+
+            // Final message after completion
+            res.write(`data: ${JSON.stringify({ progress: 100, message: 'Processing complete' })}\n\n`);
+            res.end();
+        } catch (error) {
+            res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+            res.end();
+        }
     }
+
+    
     @Post('delete')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)

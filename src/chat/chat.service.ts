@@ -10,13 +10,36 @@ import { Chat } from './entities/chat.entity';
 import { BotService } from 'src/bot/bot.service';
 
 import { QueryBot } from 'src/bot/dto/create-bot.dto';
-import { FetchChatDto } from './dto/fetch-chat.dto';
+import { FetchChatDto, FetchChatHistoryDto } from './dto/fetch-chat.dto';
 
 export class ChatService {
     constructor(
         private botService: BotService
     ) { }
 
+
+    async fetchChatHistory(fetchChatHistoryDto: FetchChatHistoryDto, req: any) {
+        try {
+
+            const data = await Chat.findAll({
+                where: {
+                    user_id: {
+                        [Op.eq]: fetchChatHistoryDto.user_id
+                    },
+                    bot_id: {
+                        [Op.eq]: fetchChatHistoryDto.bot_id
+                    }
+                }
+            })
+
+            return {
+                statusCode: 200,
+                data: data
+            }
+        } catch (error) {
+            throw new Error("error fetching chats history")
+        }
+    }
 
     async fetchChat(fetchChatDto: FetchChatDto, req: any) {
         try {

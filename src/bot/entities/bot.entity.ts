@@ -11,6 +11,8 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { Join_BotContextData } from './join_botContextData.entity';
 import { File } from 'src/context_data/entities/file.entity';
+import { Subject } from 'src/subject/entity/subject.entity';
+import { Level } from 'src/level/entity/level.entity';
 
 @Table({
     tableName: 'bots',
@@ -41,15 +43,27 @@ export class Bot extends Model {
     description: string;
 
     @Column({
+        type: DataType.TEXT,
+    })
+    first_message: string;
+
+    @Column({
+        type: DataType.STRING
+    })
+    bot_image_url: string
+
+    @Column({
         type: DataType.STRING,
     })
     ai_model: string;
+
 
     @Column({
         type: DataType.INTEGER,
     })
     level_id: number;
 
+    @ForeignKey(() => Subject)
     @Column({
         type: DataType.INTEGER,
     })
@@ -68,4 +82,7 @@ export class Bot extends Model {
 
     @BelongsToMany(() => File, () => Join_BotContextData)
     file!: File[];
+
+    @BelongsTo(() => Subject)
+    subject!: Subject
 }

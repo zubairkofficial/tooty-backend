@@ -18,6 +18,10 @@ export class CreateUserDto {
   contact: string;
 }
 
+export class DeleteUserDto {
+  @IsNumber()
+  user_id: number
+}
 export class CreateUserByAdminDto {
 
   @IsString({ message: 'name should be string' })
@@ -38,6 +42,15 @@ export class CreateUserByAdminDto {
   @IsString()
   @IsNotEmpty()
   role: Role;
+
+  @IsNumber()
+  level_id: number
+
+
+
+  user_roll_no: string
+
+
 }
 
 export class UserLoginDto {

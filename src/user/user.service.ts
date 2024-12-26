@@ -2,6 +2,7 @@ import { UnauthorizedException, HttpStatus, Logger } from '@nestjs/common';
 import {
   CreateUserByAdminDto,
   CreateUserDto,
+  DeleteUserDto,
   GetUserDto,
   RefreshAccessToken,
   UserLoginDto,
@@ -26,6 +27,9 @@ import { StudentProfile } from 'src/profile/entities/student-profile.entity';
 import { Op } from 'sequelize';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { TeacherProfile } from 'src/profile/entities/teacher-profile.entity';
+import { Multer } from 'multer';
+import { unlink } from 'fs/promises';
+import { JoinTeacherSubjectLevel } from 'src/profile/entities/join-teacher-subject-level.entity';
 
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
@@ -134,12 +138,13 @@ export class UserService {
   }
 
   async updateUser(updateUserDto: UpdateUserDto, req: any) {
-    const { name, contact, email, id } = updateUserDto;
+    const { name, contact, email, id, isVerified } = updateUserDto;
 
     await User.update({
       email,
       contact,
-      name
+      name,
+      isVerified
     }, {
       where: {
         id: {
@@ -190,6 +195,70 @@ export class UserService {
   }
 
 
+  async deleteTeacher(deleteUserDto: DeleteUserDto) {
+    try {
+
+      await JoinTeacherSubjectLevel.destroy({
+        where: {
+          teacher_id: {
+            [Op.eq]: deleteUserDto.user_id
+          }
+        }
+      }).then(async () => {
+        await TeacherProfile.destroy({
+          where: {
+            user_id: {
+              [Op.eq]: deleteUserDto.user_id
+            }
+          }
+        }).then(async () => {
+          await User.destroy({
+            where: {
+              id: {
+                [Op.eq]: deleteUserDto.user_id
+              }
+            }
+          })
+        })
+      })
+
+
+      return {
+        statusCode: 200,
+        message: "success deleting user"
+      }
+    } catch (error) {
+      throw new Error("ERROR DELETING USER")
+    }
+  }
+
+  async deleteUser(deleteUserDto: DeleteUserDto) {
+    try {
+
+      await StudentProfile.destroy({
+        where: {
+          user_id: {
+            [Op.eq]: deleteUserDto.user_id
+          }
+        }
+      }).then(async () => {
+        await User.destroy({
+          where: {
+            id: {
+              [Op.eq]: deleteUserDto.user_id
+            }
+          }
+        })
+      })
+      return {
+        statusCode: 200,
+        message: "success deleting user"
+      }
+    } catch (error) {
+      throw new Error("ERROR DELETING USER")
+    }
+  }
+
   async createUser(createUserByAdminDto: CreateUserByAdminDto) {
     const existingUser = await User.findOne({
       where: { email: createUserByAdminDto.email },
@@ -204,38 +273,43 @@ export class UserService {
       };
     }
     const hashedPassword = await bcrypt.hash(createUserByAdminDto.password != "" ? createUserByAdminDto.password : "123", 10);
-    const newUser = new User();
-    newUser.name = createUserByAdminDto.name;
-    newUser.email = createUserByAdminDto.email;
-    newUser.password = hashedPassword;
-    newUser.contact = createUserByAdminDto.contact;
-    newUser.role = createUserByAdminDto.role
-    newUser.isVerified = true
-    newUser.save().then(async (u) => {
+
+    const res = await User.create({
+      name: createUserByAdminDto.name,
+      email: createUserByAdminDto.email,
+      password: hashedPassword,
+      contact: createUserByAdminDto.contact,
+      role: createUserByAdminDto.role,
+      isVerified: true
+    }).then(async (u) => {
       if (createUserByAdminDto.role == Role.USER) {
         await StudentProfile.create({
-          level_id: null,
+          level_id: createUserByAdminDto.level_id,
           user_id: u.id,
-          user_roll_no: ""
+          user_roll_no: createUserByAdminDto.user_roll_no
         })
       } else if (createUserByAdminDto.role == Role.TEACHER) {
         await TeacherProfile.create({
           user_id: u.id,
           id: u.id,
-          title: ""
+          title: "",
+          level_id: createUserByAdminDto.level_id
         })
       }
+
+      return u
     });
     return {
       message: 'create user successfully registered.',
       statusCode: HttpStatus.OK,
       data: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
+        id: res.id,
+        name: res.name,
+        email: res.email,
       },
     };
   }
+
 
 
   async signup(createUserDto: CreateUserDto) {
@@ -267,16 +341,23 @@ export class UserService {
         user_roll_no: ""
       })
     });
-    await this.sendOtpToEmail({ email: newUser.email });
-    return {
-      message: 'You have successfully registered.',
-      statusCode: HttpStatus.OK,
-      data: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-      },
-    };
+
+    await this.sendOtpToEmail({ email: newUser.email })
+      .then(() => {
+        return {
+          message: 'You have successfully registered.',
+          statusCode: HttpStatus.OK,
+          data: {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+          },
+        };
+      })
+      .catch(() => {
+        throw new Error("Unable to email verification code")
+      })
+
   }
 
   async verifyUser(verifyOtp: VerifyOtpDto) {
@@ -371,15 +452,17 @@ export class UserService {
 
   async logout(userLogoutDto: UserLogoutDto) {
     const { refresh_token } = userLogoutDto;
-
+    console.log("logout")
     try {
       await RefreshToken.destroy({
         where: {
-          refresh_token,
+          refresh_token: {
+            [Op.eq]: refresh_token
+          },
         },
       });
       return {
-        message: 'LogOut successful.',
+        message: 'LogOut successful',
         statusCode: 200,
       };
     } catch (error) {
@@ -491,6 +574,37 @@ export class UserService {
 
     } catch (error) {
       throw new Error("Error fetching students")
+    }
+  }
+
+
+  async updateAvatar(image: Express.Multer.File, req: any) {
+    try {
+      const user = await User.findByPk(req.user.sub, {
+        attributes: ["user_image_url"]
+      })
+
+      if (user?.user_image_url != "") {
+        await unlink(user.user_image_url);
+      }
+
+      await User.update({
+        user_image_url: image.path
+      }, {
+        where: {
+          id: {
+            [Op.eq]: req.user.sub
+          }
+        }
+      })
+
+      return {
+        statusCode: 200,
+        message: "success updating avatar"
+      }
+
+    } catch (error) {
+      throw new Error("Error updating avatar")
     }
   }
 

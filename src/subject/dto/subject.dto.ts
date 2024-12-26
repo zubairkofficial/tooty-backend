@@ -16,9 +16,16 @@ export class CreateSubjectDto {
     @IsNotEmpty()
     description: string
 
+    @IsNumber()
+    level_id: number
+
 
 }
 
+export class GetSubjectByLevelDto {
+    @IsNumber()
+    level_id: number
+}
 
 export class GetSubjectDto {
     @IsNumber()
@@ -26,6 +33,9 @@ export class GetSubjectDto {
 }
 
 export class UpdateSubjectDto {
+    @IsNumber()
+    id: number
+    
     @IsString()
     @IsNotEmpty()
     title: string
@@ -37,4 +47,8 @@ export class UpdateSubjectDto {
     @IsString()
     @IsNotEmpty()
     description: string
+
+    @IsNumber()
+    level_id: number
+
 }

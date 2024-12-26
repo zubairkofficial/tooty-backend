@@ -1,8 +1,9 @@
-import { Controller, Post, Body, UseGuards, Req, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { UserService } from './user.service';
 import {
   CreateUserByAdminDto,
   CreateUserDto,
+  DeleteUserDto,
   GetUserDto,
   RefreshAccessToken,
   UserLoginDto,
@@ -17,10 +18,28 @@ import { RolesGuard } from 'src/guards/roles.guard';
 
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/utils/roles.enum';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerStorageConfig } from 'src/config/multer.config';
 
 @Controller('auth')
 export class UserController {
   constructor(private readonly userService: UserService) { }
+
+
+  @Post('update-avatar')
+  @Roles(Role.ADMIN, Role.TEACHER, Role.USER)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(
+    FileInterceptor('image', multerStorageConfig)
+  )
+  async updateAvatar(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
+    if (!image) {
+      return {
+        message: "No image uploaded"
+      }
+    }
+    return this.userService.updateAvatar(image, req)
+  }
 
 
   @Post('get-user')
@@ -29,13 +48,13 @@ export class UserController {
   async getUser(@Body() getUserDto: GetUserDto, @Req() req: any) {
     return this.userService.getUser(getUserDto, req)
   }
- 
+
   //where role is user
   @Get('get-all-teachers')
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getAllTeachers(@Req() req: any) {
-    return this.userService.getAllUsersByRole(Role.TEACHER,req)
+    return this.userService.getAllUsersByRole(Role.TEACHER, req)
   }
 
   //where role is user
@@ -55,6 +74,20 @@ export class UserController {
     return this.userService.createUser(createUserByAdminDto);
   }
 
+  @Post('delete-user')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async deleteUser(@Body() deleteUserDto: DeleteUserDto) {
+    return this.userService.deleteUser(deleteUserDto);
+  }
+
+  @Post('delete-teacher')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async deleteTeacher(@Body() deleteUserDto: DeleteUserDto) {
+    return this.userService.deleteTeacher(deleteUserDto);
+  }
+
 
   // User Signup
   @Post('signup')
@@ -69,7 +102,7 @@ export class UserController {
   }
 
   @Post('logout')
-  @Roles(Role.USER)
+  @Roles(Role.USER, Role.TEACHER, Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async logout(@Body() userLogoutDto: UserLogoutDto) {
     return this.userService.logout(userLogoutDto);

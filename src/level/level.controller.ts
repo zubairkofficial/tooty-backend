@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { LevelService } from './level.service';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/utils/roles.enum';
@@ -18,8 +18,8 @@ export class LevelController {
         return this.levelServices.getLevel(getLevelDto, req)
     }
 
-    @Post('get-all-levels')
-    @Roles(Role.ADMIN)
+    @Get('get-all-levels')
+    @Roles(Role.ADMIN, Role.TEACHER, Role.USER)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getAllLevels(@Req() req: any) {
         return this.levelServices.getAllLevels(req)

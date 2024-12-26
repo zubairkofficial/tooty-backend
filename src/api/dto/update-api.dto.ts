@@ -5,6 +5,9 @@ export class UpdateApiKeyDto {
     @IsNotEmpty()
     api_key: string;
 
-    @IsNumber()
-    id: string;
+
+
+   @IsString()
+    @IsNotEmpty()
+    api_name: string;
 }

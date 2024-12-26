@@ -2,53 +2,61 @@ import {
     BelongsTo,
     Column,
     DataType,
+    Default,
     ForeignKey,
     Model,
     PrimaryKey,
     Table,
     Unique,
 } from 'sequelize-typescript';
-import { Level } from 'src/level/entity/level.entity';
 import { User } from 'src/user/entities/user.entity';
 
 
 @Table({
-    tableName: 'student-profile',
+    tableName: 'admin-profile',
     timestamps: true,
     paranoid: true
 })
-export class StudentProfile extends Model {
+export class AdminProfile extends Model {
     @PrimaryKey
     @Column({
         autoIncrement: true,
         type: DataType.INTEGER,
     })
-    id: number; 
-
+    id: number;
 
     @Column({
-        type: DataType.STRING,
+        type: DataType.TEXT,
     })
-    user_roll_no: string;
+    openai: string
 
-
-    @ForeignKey(() => Level)
     @Column({
-        type: DataType.INTEGER,
+        type: DataType.TEXT,
     })
-    level_id: number;
+    dalle: string
 
+    @Column({
+        type: DataType.TEXT,
+    })
+    deepgram: string
 
-    @BelongsTo(() => Level)
-    level!: Level
+    @Column({
+        type: DataType.TEXT,
+    })
+    master_prompt: string
 
+    // @Default("admin")
+    // @Column({
+    //     type: DataType.TEXT,
+    // })
+    // role: string
 
+    @Unique
     @ForeignKey(() => User)
     @Column({
         type: DataType.INTEGER
     })
     user_id: number;
-
 
     @BelongsTo(() => User)
     user!: User

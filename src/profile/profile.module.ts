@@ -7,9 +7,10 @@ import { ProfileService } from './profile.service';
 import { JwtService } from '@nestjs/jwt';
 import { TeacherProfile } from './entities/teacher-profile.entity';
 import { JoinTeacherSubjectLevel } from './entities/join-teacher-subject-level.entity';
+import { AdminProfile } from './entities/admin-profile.entity';
 
 @Module({
-    imports: [SequelizeModule.forFeature([StudentProfile, TeacherProfile, JoinTeacherSubjectLevel]), ConfigModule],
+    imports: [SequelizeModule.forFeature([StudentProfile, TeacherProfile, AdminProfile, JoinTeacherSubjectLevel]), ConfigModule],
     controllers: [ProfileController],
     providers: [ProfileService, JwtService]
 })

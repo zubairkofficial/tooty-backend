@@ -22,10 +22,13 @@ export class LevelService {
     }
 
     async getAllLevels(req: any) {
+        console.log("here is get all levles")
         try {
 
-            const levels_data = await Level.findAll()
-
+            const levels_data = await Level.findAll({
+                raw: true
+            })
+            console.log(levels_data)
             return {
                 statusCode: 200,
                 data: levels_data
