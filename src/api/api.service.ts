@@ -1,7 +1,8 @@
 import { Op } from "sequelize";
 import { API } from "./entities/api.entity";
-import { UpdateApiKeyDto } from "./dto/update-api.dto";
+import { GetVoiceModelDto, UpdateApiKeyDto } from "./dto/update-api.dto";
 import { AdminProfile } from "src/profile/entities/admin-profile.entity";
+import axios from "axios";
 
 
 export class ApiService {
@@ -28,6 +29,41 @@ export class ApiService {
     //         }
     //     }
     // }
+
+
+    async getVoiceModel(getVoiceModelDto: GetVoiceModelDto) {
+        try {
+            const response = await axios.get(`https://api.deepgram.com/v1/models/${getVoiceModelDto.model_id}`);
+
+            return {
+                statusCode: 200,
+                data: response?.data
+            }
+        } catch (error) {
+            throw new Error("failed gettting model")
+        }
+    }
+
+    async getDeepGramModels(req: any) {
+        try {
+            const response = await axios.get(
+                "https://api.deepgram.com/v1/models", // Deepgram API endpoint
+                // {
+                //     headers: {
+                //         "Authorization": `Token YOUR_DEEPGRAM_API_KEY`, // Replace with your API key
+                //         "Content-Type": "multipart/form-data",
+                //     },
+                // }
+            );
+            console.log(response)
+            return {
+                statusCode: 200,
+                api: response?.data
+            }
+        } catch (error) {
+            throw new Error("failed gettting models")
+        }
+    }
 
     async getDeepGramApi(req: any) {
         try {

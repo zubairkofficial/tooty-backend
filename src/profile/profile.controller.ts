@@ -71,11 +71,11 @@ export class ProfileController {
 
 
     //students management
-    @Post('get-students-by-level')
+    @Get('get-students-by-level')
     @Roles(Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    async getStudentsByLevel(@Body() getStudentsByLevelDto: GetStudentsByLevelDto, @Req() req: any) {
-        return this.profileServices.getStudentsByLevel(getStudentsByLevelDto, req)
+    async getStudentsByLevel(@Req() req: any) {
+        return this.profileServices.getStudentsByLevel(req)
     }
 
 

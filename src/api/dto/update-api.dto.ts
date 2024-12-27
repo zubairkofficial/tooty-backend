@@ -7,7 +7,14 @@ export class UpdateApiKeyDto {
 
 
 
-   @IsString()
+    @IsString()
     @IsNotEmpty()
     api_name: string;
+}
+
+export class GetVoiceModelDto {
+
+    @IsString()
+    @IsNotEmpty()
+    model_id: string
 }

@@ -14,6 +14,9 @@ export class CreateBotDto {
     @IsNotEmpty({ message: 'description should not be empty' })
     description: string;
 
+    @IsString({ message: 'voice_model should be string' })
+    @IsNotEmpty({ message: 'voice_model should not be empty' })
+    voice_model: string
 
     // @IsString({ message: 'first message should be string' })
     // @IsNotEmpty({ message: 'first_message should not be empty' })
@@ -56,6 +59,12 @@ export class UpdateBotDto {
     @IsNotEmpty({ message: 'desciption should not be empty' })
     description: string;
 
+
+    @IsString({ message: 'voice_model should be string' })
+    @IsNotEmpty({ message: 'voice_model should not be empty' })
+    voice_model: string
+
+
     // @IsString({ message: 'first message should be string' })
     // @IsNotEmpty({ message: 'first_message should not be empty' })
     // first_message: string;
@@ -75,7 +84,7 @@ export class DeleteBotDto {
     @IsNumber()
     bot_id: number
 
-    
+
 
 }
 
@@ -99,4 +108,9 @@ export class GetBotByLevelSubject {
 export class GetBotDto {
     @IsNumber()
     bot_id: number
+}
+
+export class GetBotBySubjectDto {
+    @IsNumber()
+    subject_id: number
 }

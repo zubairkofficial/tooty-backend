@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { BotService } from './bot.service';
-import { CreateBotDto, DeleteBotDto, GetBotByLevelSubject, GetBotDto, QueryBot, UpdateBotDto } from './dto/create-bot.dto';
+import { CreateBotDto, DeleteBotDto, GetBotByLevelSubject, GetBotBySubjectDto, GetBotDto, QueryBot, UpdateBotDto } from './dto/create-bot.dto';
 import { CreateBotContextDto, DeleteBotContextDto, GetBotContextDto, UpdateBotContextDto } from './dto/create-Join-bot-data.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 import { GenerateImageDto } from './dto/generateImage.dto';
@@ -99,6 +99,13 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     async getBot(@Body() getBotDto: GetBotDto, @Req() req: any) {
         return this.botService.getBot(getBotDto)
+    }
+
+    @Post('get-bot-by-subject')
+    @Roles(Role.TEACHER)
+    @UseGuards(JwtAuthGuard)
+    async getBotBySubject(@Body() getBotDto: GetBotBySubjectDto, @Req() req: any) {
+        return this.botService.getBotBySubject(getBotDto, req)
     }
 
     @Post('get-bot-by-level-subject')

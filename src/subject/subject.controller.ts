@@ -12,7 +12,7 @@ export class SubjectController {
     constructor(private readonly subjectServices: SubjectService) { }
 
     //for teacher
-    @Post('get-subjects-by-teacher')
+    @Get('get-subjects-by-teacher')
     @Roles(Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getSubjectsByTeacher(@Req() req: any) {
@@ -30,9 +30,9 @@ export class SubjectController {
     async getSubjectsByLevel(@Body() getSubjectByLevelDto: GetSubjectByLevelDto, @Req() req: any) {
         return this.subjectServices.getSubjectsByLevel(getSubjectByLevelDto, req)
     }
-
+    
     @Post('get-subject')
-    @Roles(Role.ADMIN)
+    @Roles(Role.ADMIN, Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getSubject(@Body() getSubjectDto: GetSubjectDto, @Req() req: any) {
         return this.subjectServices.getSubject(getSubjectDto, req)

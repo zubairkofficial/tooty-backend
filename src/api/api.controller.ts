@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 
 import { ApiService } from './api.service';
 // import { Roles } from 'src/decorators/roles.decorator';
 // import { Role } from 'src/utils/roles.enum';
 
 
-import { UpdateApiKeyDto } from './dto/update-api.dto';
+import { GetVoiceModelDto, UpdateApiKeyDto } from './dto/update-api.dto';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/utils/roles.enum';
@@ -17,8 +17,27 @@ export class ApiController {
     constructor(private readonly apiServices: ApiService) { }
 
 
+
+    @Post('get-voice-model')
+    @Roles(Role.ADMIN, Role.TEACHER, Role.USER)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+
+    async getVoiceModels(@Body() getVoiceModelDto: GetVoiceModelDto, @Req() req: any) {
+        return this.apiServices.getVoiceModel(getVoiceModelDto)
+    }
+
+
+    @Get('get-deepgram-models')
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+
+    async getDeepGramModels(@Req() req: any) {
+        return this.apiServices.getDeepGramModels(req)
+    }
+
+
     @Get('get-deepgram-api')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.ADMIN, Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
 
     async getDeepGramAapi(@Req() req: any) {

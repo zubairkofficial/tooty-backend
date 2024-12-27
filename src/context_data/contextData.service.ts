@@ -76,10 +76,7 @@ export class ContextDataService {
                 .catch(err => {
                     console.error("Error deeleting context data:", err);
                 });
-            return {
-                statusCode: 200,
-                message: "Success Deleting File"
-            }
+           
 
         } catch (error) {
             throw new Error('Failed Deleting File')
@@ -91,72 +88,69 @@ export class ContextDataService {
         createFileDto: CreateFileDto,
         req: any,
         onProgress: (progress: number) => void,
-      ) {
+    ) {
         console.log('req user:', req.user);
         console.log('File received:', file.originalname, createFileDto.file_name);
-      
+
         if (!file.originalname.endsWith('.pdf')) {
-          throw new Error('Only PDF files are supported');
+            throw new Error('Only PDF files are supported');
         }
-      
+
         const api = await AdminProfile.findOne({
-             attributes: ['openai'] 
-            });
+            attributes: ['openai']
+        });
         if (!api) {
-          throw new Error('Unable to find API key');
+            throw new Error('Unable to find API key');
         }
-      
+
         const api_key = api.openai;
-      
+
         if (api_key) {
-          const context_file = await File.create({
-            file_name: createFileDto.file_name,
-            slug: createFileDto.slug,
-            user_id: req.user.sub,
-          });
-      
-          const parentDoc = await pdf(file.buffer);
-          const subDocs = this.splitTextIntoChunks(parentDoc.text, 1000, 20);
-      
-          const embeddings = new OpenAIEmbeddings({
-            apiKey: api_key,
-            model: process.env.OPEN_AI_EMBEDDING_MODEL,
-            dimensions: 1536,
-          });
-      
-          try {
-            const totalChunks = subDocs.length;
-            let processedChunks = 0;
-      
-            const promises = subDocs.map(async ({ data }) => {
-              const embeddedData = await embeddings.embedQuery(data);
-              console.log('This is embedded data:', embeddedData);
-      
-              await ContextData.create({
-                text_chunk: data,
-                embedded_chunk: `{${embeddedData}}`,
-                file_id: context_file.id,
-              });
-      
-              // Update progress
-              processedChunks++;
-              const progress = Math.round((processedChunks / totalChunks) * 100);
-              onProgress(progress);
+            const context_file = await File.create({
+                file_name: createFileDto.file_name,
+                slug: createFileDto.slug,
+                user_id: req.user.sub,
             });
-      
-            await Promise.all(promises);
-      
-            return {
-              statusCode: 200,
-              message: 'Success creating context data',
-            };
-          } catch (error) {
-            console.error('Error generating embedding:', error);
-            throw new Error('Error creating context data');
-          }
+
+            const parentDoc = await pdf(file.buffer);
+            const subDocs = this.splitTextIntoChunks(parentDoc.text, 1000, 20);
+
+            const embeddings = new OpenAIEmbeddings({
+                apiKey: api_key,
+                model: process.env.OPEN_AI_EMBEDDING_MODEL,
+                dimensions: 1536,
+            });
+
+            try {
+                const totalChunks = subDocs.length;
+                let processedChunks = 0;
+
+                const promises = subDocs.map(async ({ data }) => {
+                    const embeddedData = await embeddings.embedQuery(data);
+                    console.log('This is embedded data:', embeddedData);
+
+                    await ContextData.create({
+                        text_chunk: data,
+                        embedded_chunk: `{${embeddedData}}`,
+                        file_id: context_file.id,
+                    });
+                    // Update progress
+                    processedChunks++;
+                    const progress = Math.round((processedChunks / totalChunks) * 100);
+                    onProgress(progress);
+                });
+
+                await Promise.all(promises);
+
+                
+                
+            } catch (error) {
+                console.error('Error generating embedding:', error);
+                throw new Error('Error creating context data');
+            }
         }
-      }
-      
+    }
+
 
     splitTextIntoChunks(text: string, chunkSize: number, overlap: number): Chunk[] {
         if (chunkSize <= 0) {

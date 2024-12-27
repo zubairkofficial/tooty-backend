@@ -8,7 +8,7 @@ export class SubjectService {
     async getSubjectsByTeacher(req: any) {
         try {
 
-            await JoinTeacherSubjectLevel.findAll({
+            const data = await JoinTeacherSubjectLevel.findAll({
                 attributes: ["subject_id"],
                 where: {
                     teacher_id: {
@@ -24,14 +24,16 @@ export class SubjectService {
                     }
                 })
 
-                return {
-                    statusCode: 200,
-                    data: subjects_by_teaher
-                }
+                return subjects_by_teaher
             }).catch(() => {
                 throw new Error("Error fetching subjects by teacher")
             })
 
+
+            return {
+                statusCode: 200,
+                data: data
+            }
         } catch (error) {
             throw new Error("failed to get a subject")
         }
@@ -94,7 +96,7 @@ export class SubjectService {
         try {
 
             await Subject.update({
-                title:updateSubectDto.title,
+                title: updateSubectDto.title,
                 display_title: updateSubectDto.display_title,
                 description: updateSubectDto.description,
                 level_id: updateSubectDto.level_id
@@ -119,7 +121,7 @@ export class SubjectService {
 
     async createSubject(createSubjectDto: CreateSubjectDto, req: any) {
         try {
-console.log("subject creae")
+            console.log("subject creae")
             await Subject.create({
                 title: createSubjectDto.title,
                 display_title: createSubjectDto.display_title,

@@ -59,6 +59,11 @@ export class Bot extends Model {
 
 
     @Column({
+        type: DataType.STRING,
+    })
+    voice_model: string;
+
+    @Column({
         type: DataType.INTEGER,
     })
     level_id: number;

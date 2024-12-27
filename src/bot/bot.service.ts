@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { CreateBotDto, DeleteBotDto, GetBotByLevelSubject, GetBotDto, QueryBot, UpdateBotDto } from "./dto/create-bot.dto";
+import { CreateBotDto, DeleteBotDto, GetBotByLevelSubject, GetBotBySubjectDto, GetBotDto, QueryBot, UpdateBotDto } from "./dto/create-bot.dto";
 import { Bot } from "./entities/bot.entity";
 import { CreateBotContextDto, DeleteBotContextDto, GetBotContextDto, UpdateBotContextDto } from "./dto/create-Join-bot-data.dto";
 import { Join_BotContextData } from "./entities/join_botContextData.entity";
@@ -408,7 +408,8 @@ export class BotService {
                 level_id: updateBotDto.level_id,
                 user_id: req.user.sub,
                 subject_id: updateBotDto.subject_id,
-                display_name: updateBotDto.display_name
+                display_name: updateBotDto.display_name,
+                voice_model: updateBotDto.voice_model
             }, {
                 where: {
                     id: {
@@ -429,7 +430,19 @@ export class BotService {
         console.log(createBotDto)
 
         try {
-
+            const bot_already_exist = await Bot.findOne({
+                where: {
+                    level_id: {
+                        [Op.eq]: createBotDto.level_id
+                    },
+                    subject_id: {
+                        [Op.eq]: createBotDto.subject_id
+                    },
+                }
+            })
+            if (bot_already_exist) {
+                throw new Error("Bot with level and subject already exist")
+            }
             await Bot.create({
                 name: createBotDto.name,
                 description: createBotDto.description,
@@ -437,6 +450,7 @@ export class BotService {
                 level_id: Number(createBotDto.level_id),
                 user_id: req.user.sub,
                 bot_image_url: `${image.filename}`,
+                voice_model: createBotDto.voice_model,
                 // first_message: createBotDto.first_message,
                 subject_id: Number(createBotDto.subject_id),
                 display_name: createBotDto.display_name
@@ -666,7 +680,38 @@ export class BotService {
     }
 
 
+    async getBotBySubject(getBotDto: GetBotBySubjectDto, req: any) {
+        try {
 
+            const data = await TeacherProfile.findOne({
+                where: {
+                    user_id: {
+                        [Op.eq]: req.user.sub
+                    }
+                }
+            }).then(async (teacher) => {
+                const bot = await Bot.findOne({
+                    where: {
+                        subject_id: {
+                            [Op.eq]: getBotDto?.subject_id
+                        },
+                        level_id: {
+                            [Op.eq]: teacher.level_id
+                        }
+                    }
+                })
+                return bot
+            })
+
+
+            return {
+                statusCode: 200,
+                bot: data
+            }
+        } catch (error) {
+            throw new Error("enable to get bot")
+        }
+    }
     async getBot(getBotDto: GetBotDto) {
         try {
             const bot = await Bot.findByPk(getBotDto?.bot_id)

@@ -242,21 +242,32 @@ export class ProfileService {
         }
     }
 
-    async getStudentsByLevel(getStudentsByLevelDto: GetStudentsByLevelDto, req: any) {
+    async getStudentsByLevel(req: any) {
         try {
 
-
-            const students = await StudentProfile.findAll({
+            const data = await TeacherProfile.findOne({
                 where: {
-                    level_id: {
-                        [Op.eq]: getStudentsByLevelDto.level_id
+                    user_id: {
+                        [Op.eq]: req.user.sub
                     }
                 }
+            }).then(async (teacher) => {
+                const students = await StudentProfile.findAll({
+
+                    where: {
+                        level_id: {
+                            [Op.eq]: teacher.level_id
+                        }
+                    }
+                })
+
+                return students
             })
+
 
             return {
                 statusCode: 200,
-                data: students
+                data: data
             }
         } catch (error) {
             throw new Error("Error getting students by level")
