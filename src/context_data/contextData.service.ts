@@ -45,7 +45,7 @@ export class ContextDataService {
     }
     async deleteFile(deleteFileDto: DeleteFileDto, req: Request) {
         try {
-            await File.destroy({
+            const res = await File.destroy({
                 where: {
                     id: {
                         [Op.eq]: deleteFileDto.id
@@ -72,12 +72,15 @@ export class ContextDataService {
 
             }).then(result => {
                 console.log("sucees",);
-            })
-                .catch(err => {
-                    console.error("Error deeleting context data:", err);
-                });
-           
 
+                return {
+                    statusCode: 200,
+                    message: "File and Context data deleted successfully"
+                }
+            })
+
+
+            return res
         } catch (error) {
             throw new Error('Failed Deleting File')
         }
@@ -142,8 +145,8 @@ export class ContextDataService {
 
                 await Promise.all(promises);
 
-                
-                
+
+
             } catch (error) {
                 console.error('Error generating embedding:', error);
                 throw new Error('Error creating context data');

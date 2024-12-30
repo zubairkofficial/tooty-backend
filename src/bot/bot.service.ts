@@ -245,7 +245,7 @@ export class BotService {
                 
                         {bot_specific_prompt}
                 
-                        IF you find about query in chatContext {chatContext} then do not go for {text}
+                        IF you find about query in chatContext {chatContext} then {chatContext} is a query from user and you must give answer to {query} +  {chatContext} and find answer from {text}
                          **Understanding Chat Context**:
                             - You have access to the chat context, which includes the previous interactions between the user and you. Use this context to:
                                 - Provide relevant, consistent, and coherent answers based on the conversation's history.
