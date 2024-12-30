@@ -131,7 +131,7 @@ export class BotController {
     }
 
     @Get('get-bots-by-level')
-    @Roles(Role.USER)
+    @Roles(Role.USER, Role.TEACHER)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getBotsByLevel(@Req() req: any) {
         return this.botService.getBotsByLevel(req)

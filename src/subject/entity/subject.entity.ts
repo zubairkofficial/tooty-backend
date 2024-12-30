@@ -3,6 +3,7 @@ import {
     Column,
     DataType,
     ForeignKey,
+    HasMany,
     HasOne,
     Model,
     PrimaryKey,
@@ -10,6 +11,7 @@ import {
     Unique,
 } from 'sequelize-typescript';
 import { Bot } from 'src/bot/entities/bot.entity';
+import { File } from 'src/context_data/entities/file.entity';
 import { Level } from 'src/level/entity/level.entity';
 
 
@@ -48,6 +50,8 @@ export class Subject extends Model {
     })
     level_id: number
 
+    @HasMany(() => File)
+    files!: File[]
 
     @BelongsTo(() => Level)
     level!: Level

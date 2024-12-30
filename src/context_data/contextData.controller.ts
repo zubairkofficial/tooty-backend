@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req, Res, Sse, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ContextDataService } from './contextData.service';
-import { CreateFileDto, DeleteFileDto } from './dto/create-contextData.dto';
+import { CreateFileDto, DeleteFileDto, GetFilesBySubjectDto } from './dto/create-contextData.dto';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
 import { Roles } from 'src/decorators/roles.decorator';
@@ -27,7 +27,7 @@ export class ContextDataController {
         if (!file) {
             return res.status(400).send({ message: 'No file uploaded.' });
         }
-        res.send({ statusCode: 200, message: 'File uploaded successfully. Processing started.' });
+        res.send({ statusCode: 200, message: 'File uploaded successfully. Processing started.' })
 
         // const userId = req.user.sub;
 
@@ -42,7 +42,7 @@ export class ContextDataController {
 
     @Sse('upload-progress')
     uploadProgress(@Req() req: any): Observable<{ data: { progress: number } }> {
-        
+
 
         return new Observable((observer) => {
             const subscription = this.progressSubject.subscribe({
@@ -75,6 +75,14 @@ export class ContextDataController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     async getFiles(@Req() req: any) {
         return this.contextDataService.getAllFilesByUser(req)
+
+    }
+
+    @Post('files-by-subject')
+    @Roles(Role.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    async getFilesBySubject(@Body() getFileBySubjectDto: GetFilesBySubjectDto, @Req() req: any) {
+        return this.contextDataService.getFilesBySubject(getFileBySubjectDto, req)
 
     }
 

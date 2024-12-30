@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import * as pdf from 'pdf-parse';
-import { CreateFileDto, DeleteFileDto } from './dto/create-contextData.dto';
+import { CreateFileDto, DeleteFileDto, GetFilesBySubjectDto } from './dto/create-contextData.dto';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { ContextData } from './entities/contextData.entity';
 import { File } from './entities/file.entity';
@@ -19,6 +19,31 @@ interface Chunk {
 export class ContextDataService {
     constructor(
         private readonly logger = new Logger()) { }
+
+
+    async getFilesBySubject(getFileBySubjectDto: GetFilesBySubjectDto, req: any) {
+
+        try {
+
+            const files = await File.findAll(
+                {
+                    where: {
+                        subject_id: {
+                            [Op.eq]: getFileBySubjectDto.subject_id
+                        }
+                    }
+                }
+            )
+
+            return {
+                statusCode: 200,
+                files: files,
+                message: "success getting files"
+            }
+        } catch (error) {
+            throw new Error('error fetching file by subject')
+        }
+    }
 
     async getAllFilesByUser(req: any) {
         console.log(req.user.sub)
@@ -113,6 +138,7 @@ export class ContextDataService {
                 file_name: createFileDto.file_name,
                 slug: createFileDto.slug,
                 user_id: req.user.sub,
+                subject_id: Number(createFileDto.subject_id)
             });
 
             const parentDoc = await pdf(file.buffer);
@@ -136,10 +162,20 @@ export class ContextDataService {
                         text_chunk: data,
                         embedded_chunk: `{${embeddedData}}`,
                         file_id: context_file.id,
-                    });
+                    })
+
                     // Update progress
                     processedChunks++;
                     const progress = Math.round((processedChunks / totalChunks) * 100);
+                    await File.update({
+                        processed: Number(progress)
+                    }, {
+                        where: {
+                            id: {
+                                [Op.eq]: context_file.id
+                            }
+                        }
+                    })
                     onProgress(progress);
                 });
 

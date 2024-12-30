@@ -30,6 +30,7 @@ import { TeacherProfile } from 'src/profile/entities/teacher-profile.entity';
 import { Multer } from 'multer';
 import { unlink } from 'fs/promises';
 import { JoinTeacherSubjectLevel } from 'src/profile/entities/join-teacher-subject-level.entity';
+import { Chat } from 'src/chat/entities/chat.entity';
 
 export class UserService {
   constructor(private readonly logger = new Logger('UserService')) { }
@@ -212,6 +213,27 @@ export class UserService {
             }
           }
         }).then(async () => {
+          await Otp.destroy({
+            where: {
+              user_id: {
+                [Op.eq]: deleteUserDto.user_id
+              }
+            }
+          })
+          await Chat.destroy({
+            where: {
+              user_id: {
+                [Op.eq]: deleteUserDto.user_id
+              }
+            }
+          })
+          await RefreshToken.destroy({
+            where: {
+              user_id: {
+                [Op.eq]: deleteUserDto.user_id
+              }
+            }
+          })
           await User.destroy({
             where: {
               id: {
@@ -242,6 +264,27 @@ export class UserService {
           }
         }
       }).then(async () => {
+        await Otp.destroy({
+          where: {
+            user_id: {
+              [Op.eq]: deleteUserDto.user_id
+            }
+          }
+        })
+        await Chat.destroy({
+          where: {
+            user_id: {
+              [Op.eq]: deleteUserDto.user_id
+            }
+          }
+        })
+        await RefreshToken.destroy({
+          where: {
+            user_id: {
+              [Op.eq]: deleteUserDto.user_id
+            }
+          }
+        })
         await User.destroy({
           where: {
             id: {
@@ -286,7 +329,8 @@ export class UserService {
         await StudentProfile.create({
           level_id: createUserByAdminDto.level_id,
           user_id: u.id,
-          user_roll_no: createUserByAdminDto.user_roll_no
+          user_roll_no: createUserByAdminDto.user_roll_no,
+          id: u.id
         })
       } else if (createUserByAdminDto.role == Role.TEACHER) {
         await TeacherProfile.create({
@@ -338,7 +382,8 @@ export class UserService {
       await StudentProfile.create({
         level_id: null,
         user_id: u.id,
-        user_roll_no: ""
+        user_roll_no: "",
+        id: u.id
       })
     });
 

@@ -12,14 +12,21 @@ async function bootstrap() {
   app.enableCors();
 
   app.useGlobalPipes(new ValidationPipe());
+
   const config = new DocumentBuilder()
     .setTitle('Tooty Backend')
-    .setDescription('TEducational Bot API Backend')
+    .setDescription('Educational Bot API Backend')
     .setVersion('1.0')
     .addTag('tooty')
     .build();
+
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
-  await app.listen(Number(process.env.PORT) ?? 3001);
+
+  const port = Number(process.env.PORT) ?? 3001;
+  const host = process.env.HOST || '0.0.0.0'; // Default to 0.0.0.0 to bind to all available IPs
+
+  await app.listen(port, host);
+  console.log(`Application is running on: http://${host}:${port}`);
 }
 bootstrap();

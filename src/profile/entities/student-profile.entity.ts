@@ -20,7 +20,6 @@ import { User } from 'src/user/entities/user.entity';
 export class StudentProfile extends Model {
     @PrimaryKey
     @Column({
-        autoIncrement: true,
         type: DataType.INTEGER,
     })
     id: number; 

@@ -17,6 +17,7 @@ import { Bot } from '../../bot/entities/bot.entity';
 import { Join_BotContextData } from '../../bot/entities/join_botContextData.entity';
 import { ContextData } from './contextData.entity';
 import { User } from 'src/user/entities/user.entity';
+import { Subject } from 'src/subject/entity/subject.entity';
 // import slugify from 'slugify';
 
 @Table({
@@ -37,6 +38,18 @@ export class File extends Model {
         type: DataType.INTEGER,
     })
     user_id: number;
+
+    @ForeignKey(() => Subject)
+    @Column({
+        type: DataType.INTEGER,
+    })
+    subject_id: number;
+
+
+    @Column({
+        type: DataType.INTEGER,
+    })
+    processed: number;
 
     @Column({
         type: DataType.STRING,
@@ -61,6 +74,10 @@ export class File extends Model {
 
     @BelongsTo(() => User)
     user!: User;
+
+    @BelongsTo(() => Subject)
+    subject!: Subject;
+
 
     @BelongsToMany(() => Bot, () => Join_BotContextData)
     bots!: Bot[];

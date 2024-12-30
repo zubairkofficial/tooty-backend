@@ -9,11 +9,22 @@ export class CreateFileDto {
     @IsNotEmpty()
     slug: string
 
+
+    @IsString()
+    @IsNotEmpty()
+    subject_id: string
+
 }
 
 
 export class DeleteFileDto {
     @IsNumber()
-    id: string;
+    id: number;
+
+}
+
+export class GetFilesBySubjectDto {
+    @IsNumber()
+    subject_id: number;
 
 }
