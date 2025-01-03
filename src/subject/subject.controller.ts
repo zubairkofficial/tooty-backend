@@ -1,6 +1,6 @@
 
 import { SubjectService } from './subject.service';
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/utils/roles.enum';
 import { JwtAuthGuard } from 'src/guards/jwtVerifyAuth.guard';
@@ -45,7 +45,7 @@ export class SubjectController {
         return this.subjectServices.getAllSubjects(req)
     }
 
-    @Post('update-subject')
+    @Put('update-subject')
     @Roles(Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async updateSubject(@Body() updateSubjectDto: UpdateSubjectDto, @Req() req: any) {

@@ -16,6 +16,7 @@ import { StudentProfile } from 'src/profile/entities/student-profile.entity';
 import { API } from 'src/api/entities/api.entity';
 import { Bot } from 'src/bot/entities/bot.entity';
 import { TeacherProfile } from 'src/profile/entities/teacher-profile.entity';
+import { QuizAttempt } from 'src/quiz-attempt/entities/quiz-attempt.entity';
 
 @Table({
   tableName: 'users',
@@ -86,4 +87,7 @@ export class User extends Model {
 
   @HasMany(() => File)
   files!: File[]
+
+  @HasMany(() => QuizAttempt)
+  attempts: QuizAttempt[];
 }

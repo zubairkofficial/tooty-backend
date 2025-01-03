@@ -4,9 +4,21 @@ import { Bot } from "./entities/bot.entity";
 import { CreateBotContextDto, DeleteBotContextDto, GetBotContextDto, UpdateBotContextDto } from "./dto/create-Join-bot-data.dto";
 import { Join_BotContextData } from "./entities/join_botContextData.entity";
 import { ContextData } from "src/context_data/entities/contextData.entity";
-import { OpenAIEmbeddings, OpenAI, DallEAPIWrapper } from "@langchain/openai";
-import { PromptTemplate } from "@langchain/core/prompts";
-import { Request } from "express";
+import { OpenAIEmbeddings, OpenAI, DallEAPIWrapper, ChatOpenAI } from "@langchain/openai";
+import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from "@langchain/core/prompts";
+// import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";
+import { ToolNode, toolsCondition } from "@langchain/langgraph/prebuilt";
+
+import { pull } from "langchain/hub";
+import { Annotation, MessagesAnnotation, StateGraph } from "@langchain/langgraph";
+// import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
+// import { createRetrievalChain } from "langchain/chains/retrieval";
+import { tool } from "@langchain/core/tools";
+
+
+
+
+import { query, Request } from "express";
 import sequelize from "sequelize";
 import { Sequelize } from "sequelize-typescript";
 import { Chat } from "src/chat/entities/chat.entity";
@@ -23,6 +35,33 @@ import { Level } from "src/level/entity/level.entity";
 import { JoinTeacherSubjectLevel } from "src/profile/entities/join-teacher-subject-level.entity";
 import { TeacherProfile } from "src/profile/entities/teacher-profile.entity";
 import { AdminProfile } from "src/profile/entities/admin-profile.entity";
+import { error } from "console";
+import * as similarity from 'cosine-similarity'
+import { PoolConfig } from "pg";
+import { DistanceStrategy, PGVectorStore } from "@langchain/community/vectorstores/pgvector";
+import { AIMessage, BaseMessage, HumanMessage, isAIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import { JsonOutputParser } from "@langchain/core/output_parsers";
+import { z } from "zod";
+import { measureMemory } from "vm";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
+
+const retrieveSchema = z.object({ query: z.string() });
+
+const outputSchema = z.object({
+    answer: z.string().describe(`The answer to the query,   **Response Formatting**:
+                        - Use HTML tags for better presentation:
+                            - \`<p>\` for paragraphs.
+                            - \`<br>\` for line breaks.
+                            - \`<b>\` or \`<strong>\` for emphasis.
+                            - \`<i>\` for italics when explaining concepts.
+                            - \`<ul>\` and \`<li>\` for lists.
+                            - \`<sup>\` and \`<sub>\` for mathematical notations.
+                            - \`<pre>\` or \`<code>\` for code or mathematical derivations.
+                        - Do not include \`<img>\` tags in the response.
+                        - Break long lines for better readability.  `),
+    shouldGenerateImage: z.boolean().describe("Based on the query and answer: Whether an image should be generated"),
+
+});
 
 export class BotService {
 
@@ -149,253 +188,402 @@ export class BotService {
     }
 
 
+
+
     async queryBot(queryBot: QueryBot, req: any) {
-        console.log("data from message", queryBot)
-        let api_key = ""
+        console.log("Data from message:", queryBot);
+        let api_key = "";
+
+
+
+
+
         try {
-            const bot = await Bot.findByPk(queryBot.bot_id)
-            console.log("bot in bot", bot)
+            // Fetch the bot by ID
+            const bot = await Bot.findByPk(queryBot.bot_id);
+            console.log("Bot in bot:", bot);
 
             if (!bot) {
-                throw new Error("No bot with this id exist")
+                throw new Error("No bot with this ID exists.");
             }
 
+            // Fetch files associated with the bot
             const bot_files = await Join_BotContextData.findAll({
                 attributes: ["file_id"],
                 where: {
                     bot_id: {
-                        [Op.eq]: bot.id
-                    }
-                }
-            })
+                        [Op.eq]: bot.id,
+                    },
+                },
+            });
 
-            if (bot_files.length == 0) {
-                throw new Error("no files are attached")
+            if (bot_files.length === 0) {
+                throw new Error("No files are attached to this bot.");
             }
 
+            // Fetch the API key from the admin profile
             const api = await AdminProfile.findOne({
-                attributes: ["openai"]
-
-            })
-
-
+                attributes: ["openai", "master_prompt"],
+            });
 
             if (!api) {
-                throw new Error("unable to find api key")
+                throw new Error("Unable to find API key.");
             }
 
-            api_key = api?.openai
+            api_key = api?.openai;
 
-            if (api_key != "") {
-
-
+            if (api_key !== "") {
+                // Fetch chat context for the user and bot
                 const chatContext = await Chat.findAll({
-                    attributes: {
-                        include: ["message", "is_bot"]
-                    },
+                    attributes: ["message", "is_bot"],
                     where: {
                         bot_id: {
-                            [Op.eq]: queryBot.bot_id
+                            [Op.eq]: queryBot.bot_id,
                         },
                         user_id: {
-                            [Op.eq]: req.user?.sub
+                            [Op.eq]: req.user?.sub,
                         },
                     },
-                    limit: Number(process?.env?.CONTEXT_MESSAGES_LIMIT) || 5,
-                    order: [['createdAt', 'DESC']],
-                })
+                    limit: Number(process?.env?.CONTEXT_MESSAGES_LIMIT) ?? 5,
+                    order: [["createdAt", "DESC"]],
+                });
 
-
+                // Generate embeddings for the query
                 const embeddings = new OpenAIEmbeddings({
                     apiKey: api_key,
                     model: process.env.OPEN_AI_EMBEDDING_MODEL,
-                    dimensions: 1536
+                    dimensions: 1536,
                 });
-                const embeddedQuery = await embeddings.embedQuery(queryBot.query)
-                console.log(queryBot.query, embeddedQuery)
-                const similar_data = await this.performSimilaritySearch(embeddedQuery, bot_files)
+                const embeddedQuery = await embeddings.embedQuery(queryBot.query);
+                console.log("Query:", queryBot.query, "Embedded Query:", embeddedQuery);
 
 
+                // 4. Connect to PgVectorStore
+                // Initialize Sequelize
+                // Sample config
+                const config = {
+                    postgresConnectionOptions: {
+                        type: "postgres",
+                        host: `${process.env.DB_HOST}`,
 
-                const llm = new OpenAI({
-                    model: bot?.ai_model,
-                    temperature: 0,
-                    maxTokens: undefined,
-                    timeout: undefined,
-                    maxRetries: 2,
-                    apiKey: api_key
-                });
+                        password: `${process.env.DB_PASSWORD}`,
+                        database: `${process.env.DB_NAME}`,
 
-                console.log(llm)
+                        port: Number(`${process.env.DB_PORT}`),
+                        user: `${process.env.DB_USERNAME}`,
 
-                const promptTemplate = new PromptTemplate({
-                    inputVariables: [
-                        'text',
-                        'query',
-                        'grade',
-                        'subject',
-                        'chatContext',
-                        'master_prompt',
-                        'bot_specific_prompt'
-                    ],
-                    template: `
-                        {master_prompt}
-                
-                        You are an intelligent bot trained to assist students in grade {grade} with expertise in the subject of {subject}. Your goal is to provide accurate, understandable, and grade-appropriate answers. Additionally, format your responses using HTML to enhance readability and presentation. Follow these detailed instructions:
-                
-                        {bot_specific_prompt}
-                
-                        IF you find about query in chatContext {chatContext} then {chatContext} is a query from user and you must give answer to {query} +  {chatContext} and find answer from {text}
-                         **Understanding Chat Context**:
-                            - You have access to the chat context, which includes the previous interactions between the user and you. Use this context to:
-                                - Provide relevant, consistent, and coherent answers based on the conversation's history.
-                                - Address follow-up questions by referring back to previous interactions when applicable.
-                                - Avoid repeating information unnecessarily unless explicitly requested by the user.
-                                - Maintain continuity in tone and content to ensure a seamless user experience.
-                                - Respond to queries about past interactions accurately, recalling specific details discussed previously.
-                                - If the current query revisits or builds on an earlier topic, acknowledge the connection and expand the explanation thoughtfully.
-                
-                         **Formatting Responses**:
-                            - Use \`<p>\` for paragraphs.
-                            - Use \`<br>\` for line breaks where needed.
-                            - Use \`<b>\` or \`<strong>\` for emphasis.
-                            - Use \`<i>\` for italics when explaining concepts or terms.
-                            - Use \`<ul>\` and \`<li>\` for lists.
-                            - Use \`<sup>\` and \`<sub>\` for mathematical notations.
-                            - Use \`<pre>\` or \`<code>\` for code or mathematical derivations to make them stand out.
-                
-                      
-                     **Response Format**:
-                            - Return a JSON object with two fields: \`message\` and \`shouldGenerateImage\`.
-                            - The \`message\` field should contain the HTML-formatted response.
-                            - The \`shouldGenerateImage\` field should be set to \`true\` if the answer requires illustrations or mathematical visuals; otherwise, set it to \`false\`.
-                
-                     **Enhanced Chat Context Usage**:
-                            - Leverage the \`chatContext\` to ensure:
-                                - Continuity in follow-up discussions.
-                                - Accurate recall of previously discussed topics, ensuring the response is contextually relevant.
-                                - Tailored answers that build on prior exchanges, avoiding redundancy.
-                            - If a user requests clarification or revisits an earlier topic, provide an enriched explanation without losing alignment with prior responses.
-                            - When new information updates or contradicts prior interactions, prioritize the latest query while maintaining coherence with the conversation's flow.
- 
-                        Respond to the following query using the given chat context:
-                        {query}
-                    `,
-                });
+                    } as PoolConfig,
+                    tableName: "vector_data",
+                    columns: {
+                        idColumnName: "id",
+                        vectorColumnName: "vector",
+                        contentColumnName: "content",
+                        metadataColumnName: "metadata",
+                    },
+                    // supported distance strategies: cosine (default), innerProduct, or euclidean
+                    distanceStrategy: "cosine" as DistanceStrategy,
+                };
+
+                const vectorStore = await PGVectorStore.initialize(embeddings, config);
+
+                const checkpointer = PostgresSaver.fromConnString(
+                    `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
+                );
+
+                await checkpointer.setup();
+
+                // const graph = createReactAgent({
+                //     tools: [getWeather],
+                //     llm: new ChatOpenAI({
+                //       model: "gpt-4o-mini",
+                //     }),
+                //     checkpointSaver: checkpointer,
+                //   });
+                //   const config = { configurable: { thread_id: "1" } };
+
+                /////////////////
+                const retrieve = tool(
+                    async ({ query }) => {
+                        const retrievedDocs = await vectorStore.similaritySearch(query, 2);
+                        const serialized = retrievedDocs
+                            .map(
+                                (doc) => `Source: ${doc.metadata.source}\nContent: ${doc.pageContent}`
+                            )
+                            .join("\n");
+                        return [serialized, retrievedDocs];
+                    },
+                    {
+                        name: "retrieve",
+                        description: "Retrieve information related to a query.",
+                        schema: retrieveSchema,
+                        responseFormat: "content_and_artifact",
+                    }
+                );
 
 
-                const pre_messages = chatContext.map((chat) => ({
-                    message: chat?.message,
-                    isBot: chat?.is_bot
+                ////////////////
+
+                const system_prompt = `    
+                        **Bot Specific Prompt**
+                        ${bot?.description}
+
+                        **Response Formatting**:
+                        - Use HTML tags for better presentation:
+                            - \`<p>\` for paragraphs.
+                            - \`<br>\` for line breaks.
+                            - \`<b>\` or \`<strong>\` for emphasis.
+                            - \`<i>\` for italics when explaining concepts.
+                            - \`<ul>\` and \`<li>\` for lists.
+                            - \`<sup>\` and \`<sub>\` for mathematical notations.
+                            - \`<pre>\` or \`<code>\` for code or mathematical derivations.
+                        - Do not include \`<img>\` tags in the response.
+                        - Break long lines for better readability.
+                `
+
+
+                // Step 1: Generate an AIMessage that may include a tool-call to be sent.
+                async function queryOrRespond(state: typeof MessagesAnnotation.State) {
+                    const llmWithTools = llm.bindTools([retrieve]);
+                    const response = await llmWithTools.invoke(state.messages);
+                    // MessagesState appends messages to state instead of overwriting
+                    return { messages: [response] };
                 }
 
+                // Step 2: Execute the retrieval.
+                const tools = new ToolNode([retrieve]);
+
+                // Step 3: Generate a response using the retrieved content.
+                async function generate(state: typeof MessagesAnnotation.State) {
+                    // Get generated ToolMessages
+                    let recentToolMessages = [];
+                    for (let i = state["messages"].length - 1; i >= 0; i--) {
+                        let message = state["messages"][i];
+                        if (message instanceof ToolMessage) {
+                            recentToolMessages.push(message);
+                        } else {
+                            break;
+                        }
+                    }
+                    let toolMessages = recentToolMessages.reverse();
+
+                    // Format into prompt
+                    const docsContent = toolMessages.map((doc) => doc.content).join("\n");
+
+                    const systemMessageContent =
+                        system_prompt +
+                        "\n\n **Context**" +
+                        `${docsContent}`;
+
+                    const conversationMessages = state.messages.filter(
+                        (message) =>
+                            message instanceof HumanMessage ||
+                            message instanceof SystemMessage ||
+                            (message instanceof AIMessage && message.tool_calls.length == 0)
+                    );
+                    const prompt = [
+                        new SystemMessage(systemMessageContent),
+                        ...conversationMessages,
+                    ];
+
+                    // Run
+                    const response = await llm.invoke(prompt);
+
+                    return { messages: [response] };
+                }
+
+                const graphBuilder = new StateGraph(MessagesAnnotation)
+                    .addNode("queryOrRespond", queryOrRespond)
+                    .addNode("tools", tools)
+                    .addNode("generate", generate)
+                    .addEdge("__start__", "queryOrRespond")
+                    .addConditionalEdges("queryOrRespond", toolsCondition, {
+                        __end__: "__end__",
+                        tools: "tools",
+                    })
+                    .addEdge("tools", "generate")
+                    .addEdge("generate", "__end__");
+
+                const graph = graphBuilder.compile({ checkpointer: checkpointer });
 
 
 
+                // Initialize the OpenAI model
+                const llm = new ChatOpenAI({
+                    model: bot?.ai_model || "gpt-3.5-turbo",
+                    temperature: 0,
+                    maxTokens: 1000,
+                    timeout: 15000,
+                    maxRetries: 2,
+                    apiKey: api_key,
+                });
 
-                ))
-                const level_data = await Level.findByPk(bot.level_id)
-                const chain = promptTemplate.pipe(llm);
-                const answer = await chain.invoke({
-                    text: similar_data,
+                // const llm_structured = llm.bindTools([outputSchema])
+
+
+                let thredConfig = { configurable: { thread_id: `${queryBot.bot_id}-${req.user.sub}` } };
+
+                const extractAnswer = (res) => {
+
+                    for (const step of res.messages.reverse()) {
+
+
+                        const answer = extractAnswerContent(step);
+                        if (answer == "") {
+                            continue
+                        } else if (answer != "") {
+                            return answer
+                        }
+
+                    }
+                }
+                const extractAnswerContent = (message: BaseMessage) => {
+
+                    let txt;
+                    if (isAIMessage(message) && message.tool_calls.length == 0) {
+
+                        txt = message.content
+                        return txt
+                    }
+                    return ""
+                };
+
+
+
+                let input = {
+                    messages: [{ role: "user", content: queryBot.query }],
+                };
+
+                const response = await graph.invoke(input, thredConfig)
+                console.log("response", response)
+                const answer = extractAnswer(response)
+
+                console.log("extractANSWER", answer)
+                const template = `
+                    You are a model that analyzes queries and their associated answers to determine if generating an image based on the information is feasible. 
+                   
+                    query:
+                    {query}
+
+                    Answer: 
+                    {answer}
+
+                    **Expected Output JSON**
+                    {{
+                    "shouldGenerateImage" : "boolean"
+                    }}
+
+                    
+                    
+                  `
+                const imageGenrateTemplate = ChatPromptTemplate.fromMessages([
+                    ["system", template],
+                ]);
+
+                const promptValue = await imageGenrateTemplate.invoke({
                     query: queryBot.query,
-                    grade: level_data?.level.toLowerCase(),
-                    subject: bot?.name.toLowerCase(),
-                    chatContext: pre_messages,
-                    bot_specific_prompt: bot?.description,
-                    master_prompt: ""
+                    answer: answer
                 });
 
-                console.log(answer)
-
-                // const answerMatch = answer.match(/"answer":\s*"([^"]+)"/);
-                // const a = answerMatch ? answerMatch[1] : null;
-
-                const answerMatch = answer.match(/"message":\s*"([^"]+)"/);
-                const a = answerMatch ? answerMatch[1] : null;
-
-                // Extract the "shouldGenerateImage" value using regular expression
-                const shouldGenerateImageMatch = answer.match(/"shouldGenerateImage":\s*(true|false)/);
-
-                const b = shouldGenerateImageMatch ? shouldGenerateImageMatch[1] === 'true' : null; // Extracted boolean value
-                console.log("strigify answer", JSON.stringify(a), typeof a)
-
-                console.log("answer", b, typeof b)
-
-                const botRes = await Chat.create({
-                    bot_id: queryBot.bot_id,
-                    message: a,
-                    is_bot: true,
-                    image_url: "",
-                    user_id: req.user.sub
-                });
+                const shouldGenerateImageRes = await llm.invoke(promptValue)
+                const imageGeneration = JSON.parse(`${shouldGenerateImageRes.content}`)
 
 
-                return {
-                    statusCode: 200,
-                    data: botRes,
-                    do_generate_image: b
 
+
+                if (answer !== "" && imageGeneration != undefined) {
+                    // Save the bot's response to the chat
+                    const botRes = await Chat.create({
+                        bot_id: queryBot.bot_id,
+                        message: answer,
+                        is_bot: true,
+                        image_url: "",
+                        user_id: req.user.sub,
+                    });
+
+                    return {
+                        statusCode: 200,
+                        data: botRes,
+                        do_generate_image: imageGeneration?.shouldGenerateImage
+                    };
+                } else {
+                    throw new Error("An error occurred while generating the response.");
                 }
             } else {
-                throw new Error('No API key found')
+                throw new Error("No API key found.");
             }
-
-
-
         } catch (error: any) {
-            console.log("error", error)
-            throw new Error('Error querying bot')
+            console.log("Error:", error);
+            throw new Error("Error querying bot: " + error.message);
         }
     }
 
 
 
-    async performSimilaritySearch(queryVector: number[], bot_files: any[]) {
-        const contextDataRecords = await ContextData.findAll({
-            attributes: ['id', 'text_chunk', 'embedded_chunk'],
-            where: {
-                file_id: {
-                    [Op.in]: bot_files.map(({ file_id }) => (file_id))
-                }
-            }
-        });
+    // async performSimilaritySearch(queryVector: number[], bot_files: any[]) {
+    //     const contextDataRecords = await ContextData.findAll({
+    //         attributes: ['id', 'text_chunk', 'embedded_chunk'],
+    //         where: {
+    //             file_id: {
+    //                 [Op.in]: bot_files.map(({ file_id }) => (file_id))
+    //             }
+    //         }
+    //     });
 
-        const similarities = contextDataRecords.map((record) => {
-            const embed_data = this.removeCurlyBracesFromArray(record.embedded_chunk)
-            // const embeddedVector = JSON.parse(`${record.embedded_chunk}`); // Assuming the embedded_chunk is a stringified array
-            const similarity = this.cosineSimilarity(queryVector, embed_data);
-            return {
-                id: record.id,
-                text_chunk: record.text_chunk,
-                similarity,
-            };
-        });
+    //     const similarities = contextDataRecords.map((record) => {
+    //         const embed_data = this.removeCurlyBracesFromArray(record.embedded_chunk)
+    //         // const embeddedVector = JSON.parse(`${record.embedded_chunk}`); // Assuming the embedded_chunk is a stringified array
+    //         const similarity = this.cosineSimilarity(queryVector, embed_data);
+    //         return {
+    //             id: record.id,
+    //             text_chunk: record.text_chunk,
+    //             similarity,
+    //         };
+    //     });
 
-        // Sort by similarity in descending order
-        // similarities.sort((a, b) => b.similarity - a.similarity)
-        // console.log("similarity", similarities)
-        const return_similarities: any = similarities.filter((similar) => similar.similarity >= .5)
-        const return_similar_text = return_similarities.map(({ text_chunk }) => (text_chunk + '\n')).join(' ')
+    //     // Sort by similarity in descending order
+    //     // similarities.sort((a, b) => b.similarity - a.similarity)
+    //     // console.log("similarity", similarities)
+    //     const return_similarities: any = similarities.filter((similar) => similar.similarity >= .7)
+    //     const return_similar_text = return_similarities.map(({ text_chunk }) => (text_chunk + '\n')).join(' ')
 
-        return return_similar_text
-    }
+    //     return return_similar_text
+    // }
 
-    removeCurlyBracesFromArray(input): number[] {
-        // Convert the array to a string with curly braces
-        const arrayString = `${input}`;
+    // removeCurlyBracesFromArray(input): number[] {
+    //     // Convert the array to a string with curly braces
+    //     const arrayString = `${input}`;
 
-        // Remove the curly braces and convert back to a number array
-        return arrayString.replace(/^\{|\}$/g, '').split(',').map(num => parseFloat(num.trim()));
-    }
+    //     // Remove the curly braces and convert back to a number array
+    //     return arrayString.replace(/^\{|\}$/g, '').split(',').map(num => parseFloat(num.trim()));
+    // }
 
-    // Cosine similarity function
-    cosineSimilarity(vec1: number[], vec2: number[]): number {
-        const dotProduct = vec1.reduce((sum, value, index) => sum + value * vec2[index], 0);
-        const magnitudeVec1 = Math.sqrt(vec1.reduce((sum, value) => sum + value * value, 0));
-        const magnitudeVec2 = Math.sqrt(vec2.reduce((sum, value) => sum + value * value, 0));
-        return dotProduct / (magnitudeVec1 * magnitudeVec2);
-    }
+    // // Cosine similarity function
+    // cosineSimilarity(vec1: number[], vec2: number[]): number {
+    //     if (!vec1.length || !vec2.length) {
+    //         throw new Error("Vectors cannot be empty");
+    //     }
+
+    //     if (vec1.length !== vec2.length) {
+    //         throw new Error("Vectors must have equal length");
+    //     }
+
+    //     // const dotProduct = vec1.reduce((sum, val, i) => sum + val * vec2[i], 0);
+    //     // const mag1 = Math.sqrt(vec1.reduce((sum, val) => sum + val * val, 0));
+    //     // const mag2 = Math.sqrt(vec2.reduce((sum, val) => sum + val * val, 0));
+
+    //     // if (mag1 === 0 || mag2 === 0) {
+    //     //     throw new Error("Vector magnitudes cannot be zero");
+    //     // }
+
+    //     // return dotProduct / (mag1 * mag2);
+
+    //     const check_similarity = similarity(vec1, vec2);
+    //     if (!check_similarity) {
+    //         return 0
+    //     }
+    //     return check_similarity
+    // }
+
 
 
 
@@ -607,71 +795,101 @@ export class BotService {
         }
     }
 
-    async getAllBotsByTeacher(req: any) {
+    async getAllBotsByTeacher(req: any, page: number = 1, limit: number = 10) {
         try {
+            // Calculate the offset based on the page and limit
+            const offset = (page - 1) * limit;
 
+            // Fetch the teacher's profile
             const teacher_profile = await TeacherProfile.findOne({
                 where: {
                     user_id: {
-                        [Op.eq]: req.user.sub
-                    }
-                }
-            })
+                        [Op.eq]: req.user.sub,
+                    },
+                },
+            });
 
-            if (teacher_profile) {
-                const teacher_data = await JoinTeacherSubjectLevel.findAll({
-                    where: {
-                        teacher_id: {
-                            [Op.eq]: teacher_profile.id
-                        }
-                    }
-                })
-
-                if (teacher_data.length > 0) {
-                    const bots = await Bot.findAll({
-                        where: {
-                            [Op.or]: teacher_data.map(({ subject_id, level_id }) => ({
-                                [Op.and]: [
-                                    {
-                                        subject_id: {
-                                            [Op.eq]: subject_id
-                                        }
-                                    },
-                                    {
-                                        level_id: {
-                                            [Op.eq]: level_id
-                                        }
-                                    }
-                                ]
-                            }))
-                        }
-                    })
-                    return {
-                        statusCode: 200,
-                        data: bots
-                    }
-                }
+            if (!teacher_profile) {
+                throw new Error("Teacher profile not found");
             }
 
+            // Fetch the teacher's subject and level data
+            const teacher_data = await JoinTeacherSubjectLevel.findAll({
+                where: {
+                    teacher_id: {
+                        [Op.eq]: teacher_profile.id,
+                    },
+                },
+            });
+
+            if (teacher_data.length === 0) {
+                throw new Error("No subjects or levels assigned to the teacher");
+            }
+
+            // Fetch paginated bots based on the teacher's subjects and levels
+            const { rows: bots, count: total } = await Bot.findAndCountAll({
+                where: {
+                    [Op.or]: teacher_data.map(({ subject_id, level_id }) => ({
+                        [Op.and]: [
+                            {
+                                subject_id: {
+                                    [Op.eq]: subject_id,
+                                },
+                            },
+                            {
+                                level_id: {
+                                    [Op.eq]: level_id,
+                                },
+                            },
+                        ],
+                    })),
+                },
+                limit, // Number of records to fetch
+                offset, // Starting point for the records
+                order: [['createdAt', 'DESC']], // Optional: Sort by creation date
+            });
+
+            // Calculate the total number of pages
+            const totalPages = Math.ceil(total / limit);
+
+            return {
+                statusCode: 200,
+                message: "Bots fetched successfully",
+                bots, // Paginated bots
+                total, // Total number of bots
+                page, // Current page
+                totalPages, // Total number of pages
+            };
         } catch (error) {
             this.logger.error("Error fetching bots: ", error.message);
             throw new Error("Error fetching bots from the database");
         }
     }
-
-    async getAllBotsByAdmin(req: any) {
+    async getAllBotsByAdmin(req: any, page: number = 1, limit: number = 10) {
         try {
-            // Fetch all bots with optional associations (e.g., context data)
-            const bots = await Bot.findAll({
+            // Calculate the offset based on the page and limit
+            const offset = (page - 1) * limit;
+
+            // Fetch paginated data from the database
+            const { rows: bots, count: total } = await Bot.findAndCountAll({
                 where: {
-                    user_id: req.user.sub
-                }
+                    user_id: req.user.sub, // Filter by admin's user ID
+                },
+                limit, // Number of records to fetch
+                offset, // Starting point for the records
+                order: [['createdAt', 'DESC']], // Optional: Sort by creation date
             });
+
+            // Calculate the total number of pages
+            const totalPages = Math.ceil(total / limit);
 
             return {
                 statusCode: 200,
                 message: "Bots fetched successfully",
-                bots: bots, // Include the fetched bots in the response
+                bots, // Paginated bots
+                total, // Total number of bots
+                page, // Current page
+                totalPages, // Total number of pages
             };
         } catch (error) {
             this.logger.error("Error fetching bots: ", error.message);

@@ -13,6 +13,7 @@ import {
 import { Bot } from 'src/bot/entities/bot.entity';
 import { File } from 'src/context_data/entities/file.entity';
 import { Level } from 'src/level/entity/level.entity';
+import { Quiz } from 'src/quiz/entities/quiz.entity';
 
 
 @Table({
@@ -59,4 +60,7 @@ export class Subject extends Model {
 
     @HasOne(() => Bot)
     bot!: Bot
+
+    @HasMany(() => Quiz)
+  quizzes: Quiz[];
 }

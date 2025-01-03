@@ -8,6 +8,7 @@ import {
     Unique,
 } from 'sequelize-typescript';
 import { StudentProfile } from 'src/profile/entities/student-profile.entity';
+import { Quiz } from 'src/quiz/entities/quiz.entity';
 import { Subject } from 'src/subject/entity/subject.entity';
 
 
@@ -40,5 +41,8 @@ export class Level extends Model {
 
     @HasMany(() => Subject)
     subjects!: Subject
+
+    @HasMany(() => Quiz)
+  quizzes: Quiz[];
 
 }

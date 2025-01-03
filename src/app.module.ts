@@ -34,6 +34,15 @@ import { Level } from './level/entity/level.entity';
 import { Subject } from './subject/entity/subject.entity';
 import { JoinTeacherSubjectLevel } from './profile/entities/join-teacher-subject-level.entity';
 import { AdminProfile } from './profile/entities/admin-profile.entity';
+import { QuizModule } from './quiz/quiz.module';
+import { QuestionModule } from './question/question.module';
+import { OptionModule } from './option/option.module';
+import { QuizAttemptModule } from './quiz-attempt/quiz-attempt.module';
+import { AnswerModule } from './answer/answer.module';
+import { QuizAttempt } from './quiz-attempt/entities/quiz-attempt.entity';
+import { Quiz } from './quiz/entities/quiz.entity';
+import { Option } from './option/entities/option.entity';
+import { Question } from './question/entities/question.entity';
 
 @Module({
   imports: [
@@ -52,7 +61,7 @@ import { AdminProfile } from './profile/entities/admin-profile.entity';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadModels: true,
-      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File, Chat, StudentProfile, TeacherProfile, AdminProfile, JoinTeacherSubjectLevel, Level, Subject, API],
+      models: [User, Otp, RefreshToken, Bot, ContextData, Join_BotContextData, File, Chat, StudentProfile, TeacherProfile, AdminProfile, JoinTeacherSubjectLevel, Level, Subject, API,QuizAttempt,Quiz,Option,Question],
       synchronize: process.env.DB_SYNCHRONIZE == 'true' ? true : false,
 
       sync: {
@@ -77,6 +86,16 @@ import { AdminProfile } from './profile/entities/admin-profile.entity';
     SubjectModule,
 
     LevelModule,
+
+    QuizModule,
+
+    QuestionModule,
+
+    OptionModule,
+
+    QuizAttemptModule,
+
+    AnswerModule,
 
   ],
   controllers: [AppController],
